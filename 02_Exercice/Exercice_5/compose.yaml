@@ -1,0 +1,32 @@
+services:
+  mysql:
+    image: mysql:latest
+    container_name: mysql-exo5
+    environment:
+      MYSQL_ROOT_PASSWORD: root_pw_exo5
+      MYSQL_DATABASE: exo5db
+      MYSQL_USER: exo5user
+      MYSQL_PASSWORD: exo5pass
+    volumes:
+      - mysql-data-exo5:/var/lib/mysql
+    networks:
+      - reseau-exo5
+    restart: unless-stopped
+
+  adminer:
+    image: adminer
+    container_name: adminer-exo5
+    ports:
+      - "8081:8080"
+    networks:
+      - reseau-exo5
+    restart: unless-stopped
+    depends_on:
+      - mysql
+
+networks:
+  reseau-exo5:
+
+volumes:
+  mysql-data-exo5:
+    external: true

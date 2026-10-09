@@ -1,0 +1,48 @@
+services:
+  mysql:
+    image: mysql:latest
+    container_name: mysql-exo9
+    environment:
+      MYSQL_ROOT_PASSWORD: root_pw_exo9
+      MYSQL_DATABASE: dogsdb
+      MYSQL_USER: dogsuser
+      MYSQL_PASSWORD: dogspass
+    networks:
+      - reseau-exo9
+    restart: unless-stopped
+
+  logs-api:
+    build: ./logs-api
+    container_name: logs-api-exo9
+    environment:
+      LOGS_FILE: /data/logs.jsonl
+    volumes:
+      - logs-data-exo9:/data
+    networks:
+      - reseau-exo9
+    restart: unless-stopped
+
+  crud-api:
+    build: ./crud-api
+    container_name: crud-api-exo9
+    environment:
+      DB_HOST: mysql
+      DB_PORT: 3306
+      DB_NAME: dogsdb
+      DB_USER: dogsuser
+      DB_PASSWORD: dogspass
+      LOGS_API_URL: http://logs-api:8080/api/v1/logs
+    ports:
+      - "8084:8080"
+    networks:
+      - reseau-exo9
+    depends_on:
+      - mysql
+      - logs-api
+    restart: unless-stopped
+
+networks:
+  reseau-exo9:
+
+volumes:
+  logs-data-exo9:
