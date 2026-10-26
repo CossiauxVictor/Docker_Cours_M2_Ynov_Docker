@@ -1,0 +1,47 @@
+# config du registre prive Shop SAS (monte en lecture seule dans /etc/docker/registry/config.yml)
+version: 0.1
+
+log:
+  level: info
+  formatter: json
+  fields:
+    service: registry
+    env: tp03
+
+storage:
+  filesystem:
+    rootdirectory: /var/lib/registry
+  # obligatoire pour pouvoir faire DELETE sur un manifeste (sinon 405 Unsupported)
+  delete:
+    enabled: true
+  cache:
+    blobdescriptor: inmemory
+  # en prod on mettrait plutot un bucket s3 / azure et un cache redis
+
+http:
+  addr: :5000
+  host: https://registry.local:5000
+  relativeurls: false
+  tls:
+    certificate: /certs/registry.crt
+    key: /certs/registry.key
+    minimumtls: tls1.2
+  headers:
+    X-Content-Type-Options: [nosniff]
+  # endpoint de debug (health + metriques prometheus), PAS publie sur l'hote, juste pour le healthcheck
+  debug:
+    addr: 127.0.0.1:5005
+    prometheus:
+      enabled: true
+      path: /metrics
+
+auth:
+  htpasswd:
+    realm: "Shop SAS Registry"
+    path: /auth/htpasswd
+
+health:
+  storagedriver:
+    enabled: true
+    interval: 10s
+    threshold: 3

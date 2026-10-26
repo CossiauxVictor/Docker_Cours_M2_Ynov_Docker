@@ -1,0 +1,2 @@
+# volontairement vide : BuildKit prend ce fichier a la place de .dockerignore pour Dockerfile.legacy.
+# Ca permet de reconstruire l'image "historique" a l'identique (avec .env, dump, etc.) pour le diagnostic.

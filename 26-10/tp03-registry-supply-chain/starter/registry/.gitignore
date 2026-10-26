@@ -1,0 +1,5 @@
+# cles privees : jamais dans git
+certs/*.key
+certs/*.srl
+# hash des mots de passe, regenere par gen-htpasswd.sh
+auth/htpasswd

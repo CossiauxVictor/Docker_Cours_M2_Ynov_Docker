@@ -1,0 +1,5 @@
+{
+  "registry-mirrors": ["http://registry-mirror:5001"],
+  "log-driver": "json-file",
+  "log-opts": { "max-size": "10m", "max-file": "3" }
+}

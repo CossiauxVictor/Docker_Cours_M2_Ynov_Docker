@@ -1,0 +1,935 @@
+{
+  "SLSA": {
+    "buildDefinition": {
+      "buildType": "https://github.com/moby/buildkit/blob/master/docs/attestations/slsa-definitions.md",
+      "externalParameters": {
+        "configSource": {
+          "path": "Dockerfile"
+        },
+        "request": {
+          "args": {
+            "build-arg:GIT_SHA": "cc6a3da",
+            "build-arg:VERSION": "1.0",
+            "cmdline": "docker/dockerfile:1.7",
+            "source": "docker/dockerfile:1.7"
+          },
+          "compatibilityVersion": 30,
+          "frontend": "gateway.v0",
+          "locals": [
+            {
+              "name": "context"
+            },
+            {
+              "name": "dockerfile"
+            }
+          ],
+          "root": {
+            "configSource": {
+              "path": "Dockerfile"
+            },
+            "request": {
+              "args": {
+                "build-arg:GIT_SHA": "cc6a3da",
+                "build-arg:VERSION": "1.0",
+                "vcs:localdir:context": "26-10\\tp02-buildkit-avance\\starter\\shop-worker",
+                "vcs:localdir:dockerfile": "26-10\\tp02-buildkit-avance\\starter\\shop-worker",
+                "vcs:revision": "cc6a3da40ef2146d1e0a9c809ded16cdda586e49",
+                "vcs:source": "https://github.com/CossiauxVictor/Docker_Cours_M2_Ynov_Docker.git"
+              }
+            }
+          },
+          "secrets": [
+            {
+              "id": "pipconf"
+            }
+          ]
+        }
+      },
+      "internalParameters": {
+        "buildConfig": {
+          "digestMapping": {
+            "sha256:00a03ef028b51a1b9b15044fe33dde2b423298c6c8907f53b2c8bd2706456cd1": "step7",
+            "sha256:140284d9baed1153f3a10759da4bb1125ff2dae4c79580c85884173c753ba627": "step4",
+            "sha256:147442915d1340191431d62c632396b3e3a6b4623e11a02753a2e1bbf815acb1": "step9",
+            "sha256:1f067a30bbef5ec24c17b796a89804cbe6dbf5e06d14bfc17b59ef6347653284": "step12",
+            "sha256:22a433dfc63f8d65c25740635eed47bf2d5f7c80f6b62f58f0b7a508ea8e9189": "step14",
+            "sha256:263152150dc3be772418f4a372ddcff581b7c644bf59b38b012f0d5ba11e17d7": "step10",
+            "sha256:31935a201521f1809d7db08a3e3375ee5067f159376592de378cd6c4f79e0ea9": "step2",
+            "sha256:3c7a0b810a7a10ec4bd88bee39d958199807ce908214f5e61b135fdc62269037": "step5",
+            "sha256:3d5c5fdc81efce6763e7df7213e72ba7cc062346f5aded26972c7b73fdf94d21": "step8",
+            "sha256:572c0a13f7996f6b04a0d71b8056880972e6447aef757367c2428ed580168017": "step11",
+            "sha256:580e75a9da38225e1bad67ce3ed2b3dfc67f9bd1d041fda99d65c8d9abf2d6fc": "step6",
+            "sha256:84f543e75c24218e60a7efc3d4bd283507a135820ac3a8f4c113a4496994f41d": "step13",
+            "sha256:a6c9344a8ee7773e1b97c37685bc49c7d83472e6378e6eaab77c8466886d6290": "step3",
+            "sha256:b563ec47f2bdfb136aa1949ad8935321261c42ccaf003a65808546de9b815997": "step0",
+            "sha256:e87f8ec47706965357e6d4c4a4e719ec141e5100741e00f72b23187ca75785ef": "step1"
+          },
+          "llbDefinition": [
+            {
+              "id": "step0",
+              "op": {
+                "Op": {
+                  "source": {
+                    "identifier": "docker-image://docker.io/library/python:3.12.15-slim-bookworm@sha256:6a0e06f5ba0b373d051aabd3fffb9b873f27f9a2a3a14bcbe37dee6f0e3bbc70"
+                  }
+                },
+                "constraints": {},
+                "platform": {
+                  "Architecture": "amd64",
+                  "OS": "linux"
+                }
+              }
+            },
+            {
+              "id": "step1",
+              "inputs": [
+                "step0:0"
+              ],
+              "op": {
+                "Op": {
+                  "file": {
+                    "actions": [
+                      {
+                        "Action": {
+                          "mkdir": {
+                            "makeParents": true,
+                            "mode": 493,
+                            "path": "/app",
+                            "timestamp": -1
+                          }
+                        },
+                        "input": 0,
+                        "output": 0,
+                        "secondaryInput": -1
+                      }
+                    ]
+                  }
+                },
+                "constraints": {}
+              }
+            },
+            {
+              "id": "step2",
+              "inputs": [
+                "step1:0"
+              ],
+              "op": {
+                "Op": {
+                  "exec": {
+                    "meta": {
+                      "args": [
+                        "/bin/sh",
+                        "-c",
+                        "groupadd --system --gid 10001 worker  \u0026\u0026 useradd --system --uid 10001 --gid worker --no-create-home --shell /usr/sbin/nologin worker"
+                      ],
+                      "cwd": "/app",
+                      "env": [
+                        "PATH=/opt/venv/bin:/usr/local/bin:/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin",
+                        "LANG=C.UTF-8",
+                        "GPG_KEY=7169605F62C751356D054A26A821E680E5FA6305",
+                        "PYTHON_VERSION=3.12.15",
+                        "PYTHON_SHA256=c2c4321961fab0fb999d66e0cecf521c2ab3994c7992873ea99e306c1094fd5a",
+                        "PYTHONDONTWRITEBYTECODE=1",
+                        "PYTHONUNBUFFERED=1",
+                        "PIP_DISABLE_PIP_VERSION_CHECK=1",
+                        "VERSION=1.0",
+                        "GIT_SHA=cc6a3da",
+                        "SOURCE_URL=https://github.com/CossiauxVictor/Docker_Cours_M2_Ynov_Docker"
+                      ],
+                      "removeMountStubsRecursive": true
+                    },
+                    "mounts": [
+                      {
+                        "dest": "/"
+                      }
+                    ]
+                  }
+                },
+                "constraints": {},
+                "platform": {
+                  "Architecture": "amd64",
+                  "OS": "linux"
+                }
+              }
+            },
+            {
+              "id": "step3",
+              "inputs": [
+                "step1:0"
+              ],
+              "op": {
+                "Op": {
+                  "exec": {
+                    "meta": {
+                      "args": [
+                        "/bin/sh",
+                        "-c",
+                        "python -m venv /opt/venv"
+                      ],
+                      "cwd": "/app",
+                      "env": [
+                        "PATH=/opt/venv/bin:/usr/local/bin:/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin",
+                        "LANG=C.UTF-8",
+                        "GPG_KEY=7169605F62C751356D054A26A821E680E5FA6305",
+                        "PYTHON_VERSION=3.12.15",
+                        "PYTHON_SHA256=c2c4321961fab0fb999d66e0cecf521c2ab3994c7992873ea99e306c1094fd5a",
+                        "PYTHONDONTWRITEBYTECODE=1",
+                        "PYTHONUNBUFFERED=1",
+                        "PIP_DISABLE_PIP_VERSION_CHECK=1",
+                        "TARGETARCH=amd64"
+                      ],
+                      "removeMountStubsRecursive": true
+                    },
+                    "mounts": [
+                      {
+                        "dest": "/"
+                      }
+                    ]
+                  }
+                },
+                "constraints": {},
+                "platform": {
+                  "Architecture": "amd64",
+                  "OS": "linux"
+                }
+              }
+            },
+            {
+              "id": "step4",
+              "op": {
+                "Op": {
+                  "source": {
+                    "attrs": {
+                      "local.excludepatterns": "[\"pip.conf\",\"pip.conf.*\",\".env\",\"*.key\",\"*.pem\",\".git\",\".gitignore\",\"Dockerfile*\",\".dockerignore\",\"*.md\",\"*.tar\",\"__pycache__\",\"*.pyc\",\".pytest_cache\",\".ruff_cache\",\".venv\"]",
+                      "local.followpaths": "[\"requirements-dev.txt\",\"requirements.txt\",\"tests\",\"worker\"]",
+                      "local.sharedkeyhint": "context"
+                    },
+                    "identifier": "local://context"
+                  }
+                },
+                "constraints": {}
+              }
+            },
+            {
+              "id": "step5",
+              "inputs": [
+                "step3:0",
+                "step4:0"
+              ],
+              "op": {
+                "Op": {
+                  "file": {
+                    "actions": [
+                      {
+                        "Action": {
+                          "copy": {
+                            "allowEmptyWildcard": true,
+                            "allowWildcard": true,
+                            "createDestPath": true,
+                            "dest": "/app/",
+                            "dirCopyContents": true,
+                            "followSymlink": true,
+                            "mode": -1,
+                            "src": "/requirements.txt",
+                            "timestamp": -1
+                          }
+                        },
+                        "input": 0,
+                        "output": 0,
+                        "secondaryInput": 1
+                      }
+                    ]
+                  }
+                },
+                "constraints": {}
+              }
+            },
+            {
+              "id": "step6",
+              "inputs": [
+                "step5:0"
+              ],
+              "op": {
+                "Op": {
+                  "exec": {
+                    "meta": {
+                      "args": [
+                        "/bin/sh",
+                        "-c",
+                        "pip install -r requirements.txt"
+                      ],
+                      "cwd": "/app",
+                      "env": [
+                        "PATH=/opt/venv/bin:/usr/local/bin:/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin",
+                        "LANG=C.UTF-8",
+                        "GPG_KEY=7169605F62C751356D054A26A821E680E5FA6305",
+                        "PYTHON_VERSION=3.12.15",
+                        "PYTHON_SHA256=c2c4321961fab0fb999d66e0cecf521c2ab3994c7992873ea99e306c1094fd5a",
+                        "PYTHONDONTWRITEBYTECODE=1",
+                        "PYTHONUNBUFFERED=1",
+                        "PIP_DISABLE_PIP_VERSION_CHECK=1",
+                        "TARGETARCH=amd64"
+                      ],
+                      "removeMountStubsRecursive": true
+                    },
+                    "mounts": [
+                      {
+                        "dest": "/"
+                      },
+                      {
+                        "cacheOpt": {
+                          "ID": "/pip-amd64",
+                          "sharing": 2
+                        },
+                        "dest": "/root/.cache/pip",
+                        "input": -1,
+                        "mountType": 3,
+                        "output": -1
+                      },
+                      {
+                        "dest": "/etc/pip.conf",
+                        "mountType": 1,
+                        "secretOpt": {
+                          "ID": "pipconf",
+                          "mode": 256
+                        }
+                      }
+                    ]
+                  }
+                },
+                "constraints": {},
+                "platform": {
+                  "Architecture": "amd64",
+                  "OS": "linux"
+                }
+              }
+            },
+            {
+              "id": "step7",
+              "inputs": [
+                "step2:0",
+                "step6:0"
+              ],
+              "op": {
+                "Op": {
+                  "file": {
+                    "actions": [
+                      {
+                        "Action": {
+                          "copy": {
+                            "allowEmptyWildcard": true,
+                            "allowWildcard": true,
+                            "createDestPath": true,
+                            "dest": "/opt/venv",
+                            "dirCopyContents": true,
+                            "followSymlink": true,
+                            "mode": -1,
+                            "src": "/opt/venv",
+                            "timestamp": -1
+                          }
+                        },
+                        "input": 0,
+                        "output": 0,
+                        "secondaryInput": 1
+                      }
+                    ]
+                  }
+                },
+                "constraints": {}
+              }
+            },
+            {
+              "id": "step8",
+              "inputs": [
+                "step6:0",
+                "step4:0"
+              ],
+              "op": {
+                "Op": {
+                  "file": {
+                    "actions": [
+                      {
+                        "Action": {
+                          "copy": {
+                            "allowEmptyWildcard": true,
+                            "allowWildcard": true,
+                            "createDestPath": true,
+                            "dest": "/app/",
+                            "dirCopyContents": true,
+                            "followSymlink": true,
+                            "mode": -1,
+                            "src": "/requirements-dev.txt",
+                            "timestamp": -1
+                          }
+                        },
+                        "input": 0,
+                        "output": 0,
+                        "secondaryInput": 1
+                      }
+                    ]
+                  }
+                },
+                "constraints": {}
+              }
+            },
+            {
+              "id": "step9",
+              "inputs": [
+                "step8:0"
+              ],
+              "op": {
+                "Op": {
+                  "exec": {
+                    "meta": {
+                      "args": [
+                        "/bin/sh",
+                        "-c",
+                        "pip install -r requirements-dev.txt"
+                      ],
+                      "cwd": "/app",
+                      "env": [
+                        "PATH=/opt/venv/bin:/usr/local/bin:/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin",
+                        "LANG=C.UTF-8",
+                        "GPG_KEY=7169605F62C751356D054A26A821E680E5FA6305",
+                        "PYTHON_VERSION=3.12.15",
+                        "PYTHON_SHA256=c2c4321961fab0fb999d66e0cecf521c2ab3994c7992873ea99e306c1094fd5a",
+                        "PYTHONDONTWRITEBYTECODE=1",
+                        "PYTHONUNBUFFERED=1",
+                        "PIP_DISABLE_PIP_VERSION_CHECK=1",
+                        "TARGETARCH=amd64"
+                      ],
+                      "removeMountStubsRecursive": true
+                    },
+                    "mounts": [
+                      {
+                        "dest": "/"
+                      },
+                      {
+                        "cacheOpt": {
+                          "ID": "/pip-amd64",
+                          "sharing": 2
+                        },
+                        "dest": "/root/.cache/pip",
+                        "input": -1,
+                        "mountType": 3,
+                        "output": -1
+                      },
+                      {
+                        "dest": "/etc/pip.conf",
+                        "mountType": 1,
+                        "secretOpt": {
+                          "ID": "pipconf",
+                          "mode": 256
+                        }
+                      }
+                    ]
+                  }
+                },
+                "constraints": {},
+                "platform": {
+                  "Architecture": "amd64",
+                  "OS": "linux"
+                }
+              }
+            },
+            {
+              "id": "step10",
+              "inputs": [
+                "step9:0",
+                "step4:0"
+              ],
+              "op": {
+                "Op": {
+                  "file": {
+                    "actions": [
+                      {
+                        "Action": {
+                          "copy": {
+                            "allowEmptyWildcard": true,
+                            "allowWildcard": true,
+                            "createDestPath": true,
+                            "dest": "/app/worker",
+                            "dirCopyContents": true,
+                            "followSymlink": true,
+                            "mode": -1,
+                            "src": "/worker",
+                            "timestamp": -1
+                          }
+                        },
+                        "input": 0,
+                        "output": 0,
+                        "secondaryInput": 1
+                      }
+                    ]
+                  }
+                },
+                "constraints": {}
+              }
+            },
+            {
+              "id": "step11",
+              "inputs": [
+                "step10:0",
+                "step4:0"
+              ],
+              "op": {
+                "Op": {
+                  "file": {
+                    "actions": [
+                      {
+                        "Action": {
+                          "copy": {
+                            "allowEmptyWildcard": true,
+                            "allowWildcard": true,
+                            "createDestPath": true,
+                            "dest": "/app/tests",
+                            "dirCopyContents": true,
+                            "followSymlink": true,
+                            "mode": -1,
+                            "src": "/tests",
+                            "timestamp": -1
+                          }
+                        },
+                        "input": 0,
+                        "output": 0,
+                        "secondaryInput": 1
+                      }
+                    ]
+                  }
+                },
+                "constraints": {}
+              }
+            },
+            {
+              "id": "step12",
+              "inputs": [
+                "step11:0"
+              ],
+              "op": {
+                "Op": {
+                  "exec": {
+                    "meta": {
+                      "args": [
+                        "/bin/sh",
+                        "-c",
+                        "ruff check worker tests  \u0026\u0026 python -m pytest -q -p no:cacheprovider tests"
+                      ],
+                      "cwd": "/app",
+                      "env": [
+                        "PATH=/opt/venv/bin:/usr/local/bin:/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin",
+                        "LANG=C.UTF-8",
+                        "GPG_KEY=7169605F62C751356D054A26A821E680E5FA6305",
+                        "PYTHON_VERSION=3.12.15",
+                        "PYTHON_SHA256=c2c4321961fab0fb999d66e0cecf521c2ab3994c7992873ea99e306c1094fd5a",
+                        "PYTHONDONTWRITEBYTECODE=1",
+                        "PYTHONUNBUFFERED=1",
+                        "PIP_DISABLE_PIP_VERSION_CHECK=1",
+                        "TARGETARCH=amd64"
+                      ],
+                      "removeMountStubsRecursive": true
+                    },
+                    "mounts": [
+                      {
+                        "dest": "/"
+                      }
+                    ]
+                  }
+                },
+                "constraints": {},
+                "platform": {
+                  "Architecture": "amd64",
+                  "OS": "linux"
+                }
+              }
+            },
+            {
+              "id": "step13",
+              "inputs": [
+                "step7:0",
+                "step12:0"
+              ],
+              "op": {
+                "Op": {
+                  "file": {
+                    "actions": [
+                      {
+                        "Action": {
+                          "copy": {
+                            "allowEmptyWildcard": true,
+                            "allowWildcard": true,
+                            "createDestPath": true,
+                            "dest": "/app/worker",
+                            "dirCopyContents": true,
+                            "followSymlink": true,
+                            "mode": -1,
+                            "src": "/app/worker",
+                            "timestamp": -1
+                          }
+                        },
+                        "input": 0,
+                        "output": 0,
+                        "secondaryInput": 1
+                      }
+                    ]
+                  }
+                },
+                "constraints": {}
+              }
+            },
+            {
+              "id": "step14",
+              "inputs": [
+                "step13:0"
+              ],
+              "op": {
+                "Op": {}
+              }
+            }
+          ]
+        },
+        "builderPlatform": "linux/amd64"
+      },
+      "resolvedDependencies": [
+        {
+          "digest": {
+            "sha256": "ae4f3b554449e7e25548e7d8ccc029d17357348e30c6e3df01b92bc93654d6a9"
+          },
+          "uri": "pkg:docker/docker/buildkit-syft-scanner@stable-1"
+        },
+        {
+          "digest": {
+            "sha256": "a57df69d0ea827fb7266491f2813635de6f17269be881f696fbfdf2d83dda33e"
+          },
+          "uri": "pkg:docker/docker/dockerfile@1.7"
+        },
+        {
+          "digest": {
+            "sha256": "6a0e06f5ba0b373d051aabd3fffb9b873f27f9a2a3a14bcbe37dee6f0e3bbc70"
+          },
+          "uri": "pkg:docker/python@3.12.15-slim-bookworm?platform=linux%2Famd64"
+        }
+      ]
+    },
+    "runDetails": {
+      "builder": {
+        "id": ""
+      },
+      "metadata": {
+        "buildkit_completeness": {
+          "request": true,
+          "resolvedDependencies": false
+        },
+        "buildkit_metadata": {
+          "source": {
+            "infos": [
+              {
+                "data": "IyBzeW50YXg9ZG9ja2VyL2RvY2tlcmZpbGU6MS43CiMgc2hvcC13b3JrZXIgLSBUUDAyIChsJ2FuY2llbiBEb2NrZXJmaWxlIGVzdCBnYXJkZSBkYW5zIERvY2tlcmZpbGUubGVnYWN5KQojCiMgICBiYXNlICAgICAtPiBweXRob24gc2xpbSBlcGluZ2xlZSArIHZhcmlhYmxlcyBweXRob24KIyAgIGJ1aWxkZXIgIC0+IHZlbnYgL29wdC92ZW52IGF2ZWMgbGVzIGRlcHMgZGUgcHJvZCAocGlwLmNvbmYgZW4gc2VjcmV0IG1vdW50ICsgY2FjaGUgcGlwKQojICAgdGVzdCAgICAgLT4gZGVwcyBkZSBkZXYgKyBydWZmICsgcHl0ZXN0CiMgICBydW50aW1lICAtPiBiYXNlICsgdmVudiArIGNvZGUsIHVzZXIgbm9uLXJvb3QKIwojIGJ1aWxkIDogZG9ja2VyIGJ1aWxkIC0tc2VjcmV0IGlkPXBpcGNvbmYsc3JjPXBpcC5jb25mIC10IHdvcmtlcjoxLjAgLgoKIyAtLS0tLS0tLS0tIGJhc2UgLS0tLS0tLS0tLQpGUk9NIHB5dGhvbjozLjEyLjE1LXNsaW0tYm9va3dvcm0gQVMgYmFzZQpFTlYgUFlUSE9ORE9OVFdSSVRFQllURUNPREU9MSBcCiAgICBQWVRIT05VTkJVRkZFUkVEPTEgXAogICAgUElQX0RJU0FCTEVfUElQX1ZFUlNJT05fQ0hFQ0s9MSBcCiAgICBQQVRIPS9vcHQvdmVudi9iaW46JFBBVEgKV09SS0RJUiAvYXBwCgojIC0tLS0tLS0tLS0gYnVpbGRlciAtLS0tLS0tLS0tCkZST00gYmFzZSBBUyBidWlsZGVyCiMgVEFSR0VUQVJDSCBlc3QgcmVtcGxpIGF1dG9tYXRpcXVlbWVudCBwYXIgYnVpbGR4IChhbWQ2NCwgYXJtNjQuLi4pIDoKIyBvbiBzJ2VuIHNlcnQgcG91ciBhdm9pciB1biBjYWNoZSBwaXAgc2VwYXJlIHBhciBhcmNoaSAobGVzIHdoZWVscyBzb250IHBhcyBsZXMgbWVtZXMpCkFSRyBUQVJHRVRBUkNIClJVTiBweXRob24gLW0gdmVudiAvb3B0L3ZlbnYKQ09QWSByZXF1aXJlbWVudHMudHh0IC4vCiMgLSBzZWNyZXQgOiBsZSBwaXAuY29uZiAoYXZlYyBsZSB0b2tlbiBkdSByZWdpc3RyZSBpbnRlcm5lKSBlc3QgbW9udGUgZW4gdG1wZnMgbGUgdGVtcHMgZHUgUlVOCiMgICB1bmlxdWVtZW50LiBJbCBhcHBhcmFpdCBuaSBkYW5zIHVuZSBjb3VjaGUsIG5pIGRhbnMgbCdoaXN0b3J5LCBuaSBkYW5zIGxlcyBtZXRhZGF0YS4KIyAgIHJlcXVpcmVkPXRydWUgLT4gbGUgYnVpbGQgcGxhbnRlIHNpIG9uIG91YmxpZSAtLXNlY3JldCAoc2lub24gcGlwIHBhcnRpcmFpdCBzdXIgcHlwaS5vcmcgZW4gc2lsZW5jZSkKIyAtIGNhY2hlIDogL3Jvb3QvLmNhY2hlL3BpcCBwZXJzaXN0ZSBlbnRyZSBsZXMgYnVpbGRzIG1haXMgbidlc3QgamFtYWlzIGRhbnMgbCdpbWFnZQojIERMMzA0MiBpZ25vcmUgdm9sb250YWlyZSA6IGxlIGNhY2hlIHBpcCBlc3QgZGFucyB1biBjYWNoZSBtb3VudCBCdWlsZEtpdCwgaWwgZmluaXQgcGFzIGRhbnMgbGEgY291Y2hlCiMgaGFkb2xpbnQgaWdub3JlPURMMzA0MgpSVU4gLS1tb3VudD10eXBlPXNlY3JldCxpZD1waXBjb25mLHRhcmdldD0vZXRjL3BpcC5jb25mLHJlcXVpcmVkPXRydWUgXAogICAgLS1tb3VudD10eXBlPWNhY2hlLHRhcmdldD0vcm9vdC8uY2FjaGUvcGlwLGlkPXBpcC0ke1RBUkdFVEFSQ0h9LHNoYXJpbmc9bG9ja2VkIFwKICAgIHBpcCBpbnN0YWxsIC1yIHJlcXVpcmVtZW50cy50eHQKCiMgLS0tLS0tLS0tLSB0ZXN0IC0tLS0tLS0tLS0KRlJPTSBidWlsZGVyIEFTIHRlc3QKQVJHIFRBUkdFVEFSQ0gKQ09QWSByZXF1aXJlbWVudHMtZGV2LnR4dCAuLwojIERMMzA0MiBpZ25vcmUgdm9sb250YWlyZSA6IGxlIGNhY2hlIHBpcCBlc3QgZGFucyB1biBjYWNoZSBtb3VudCBCdWlsZEtpdCwgaWwgZmluaXQgcGFzIGRhbnMgbGEgY291Y2hlCiMgaGFkb2xpbnQgaWdub3JlPURMMzA0MgpSVU4gLS1tb3VudD10eXBlPXNlY3JldCxpZD1waXBjb25mLHRhcmdldD0vZXRjL3BpcC5jb25mLHJlcXVpcmVkPXRydWUgXAogICAgLS1tb3VudD10eXBlPWNhY2hlLHRhcmdldD0vcm9vdC8uY2FjaGUvcGlwLGlkPXBpcC0ke1RBUkdFVEFSQ0h9LHNoYXJpbmc9bG9ja2VkIFwKICAgIHBpcCBpbnN0YWxsIC1yIHJlcXVpcmVtZW50cy1kZXYudHh0CkNPUFkgd29ya2VyIC4vd29ya2VyCkNPUFkgdGVzdHMgLi90ZXN0cwpSVU4gcnVmZiBjaGVjayB3b3JrZXIgdGVzdHMgXAogJiYgcHl0aG9uIC1tIHB5dGVzdCAtcSAtcCBubzpjYWNoZXByb3ZpZGVyIHRlc3RzCgojIC0tLS0tLS0tLS0gcnVudGltZSAtLS0tLS0tLS0tCkZST00gYmFzZSBBUyBydW50aW1lCgpBUkcgVkVSU0lPTj1kZXYKQVJHIEdJVF9TSEE9dW5rbm93bgpBUkcgU09VUkNFX1VSTD1odHRwczovL2dpdGh1Yi5jb20vQ29zc2lhdXhWaWN0b3IvRG9ja2VyX0NvdXJzX00yX1lub3ZfRG9ja2VyCkxBQkVMIG9yZy5vcGVuY29udGFpbmVycy5pbWFnZS50aXRsZT0ic2hvcC13b3JrZXIiIFwKICAgICAgb3JnLm9wZW5jb250YWluZXJzLmltYWdlLmRlc2NyaXB0aW9uPSJXb3JrZXIgY29tbWFuZGVzIFNob3AgU0FTIChjb25zb21tZSBvcmRlcnM6cXVldWUpIiBcCiAgICAgIG9yZy5vcGVuY29udGFpbmVycy5pbWFnZS52ZXJzaW9uPSIke1ZFUlNJT059IiBcCiAgICAgIG9yZy5vcGVuY29udGFpbmVycy5pbWFnZS5yZXZpc2lvbj0iJHtHSVRfU0hBfSIgXAogICAgICBvcmcub3BlbmNvbnRhaW5lcnMuaW1hZ2Uuc291cmNlPSIke1NPVVJDRV9VUkx9IiBcCiAgICAgIG9yZy5vcGVuY29udGFpbmVycy5pbWFnZS52ZW5kb3I9IlNob3AgU0FTIiBcCiAgICAgIG9yZy5vcGVuY29udGFpbmVycy5pbWFnZS5iYXNlLm5hbWU9ImRvY2tlci5pby9saWJyYXJ5L3B5dGhvbjozLjEyLjE1LXNsaW0tYm9va3dvcm0iCgpSVU4gZ3JvdXBhZGQgLS1zeXN0ZW0gLS1naWQgMTAwMDEgd29ya2VyIFwKICYmIHVzZXJhZGQgLS1zeXN0ZW0gLS11aWQgMTAwMDEgLS1naWQgd29ya2VyIC0tbm8tY3JlYXRlLWhvbWUgLS1zaGVsbCAvdXNyL3NiaW4vbm9sb2dpbiB3b3JrZXIKCkNPUFkgLS1mcm9tPWJ1aWxkZXIgL29wdC92ZW52IC9vcHQvdmVudgojIGxlIGNvZGUgdmllbnQgZGUgbCdldGFwZSB0ZXN0IDogY2EgZm9yY2UgQnVpbGRLaXQgYSBleGVjdXRlciBsZXMgdGVzdHMgbWVtZSBzdXIgdW4gYnVpbGQgIm5vcm1hbCIKQ09QWSAtLWZyb209dGVzdCAvYXBwL3dvcmtlciAuL3dvcmtlcgoKVVNFUiAxMDAwMToxMDAwMQpFWFBPU0UgOTEwMAoKIyBsZSB3b3JrZXIgZXhwb3NlIHNlcyBtZXRyaXF1ZXMgcHJvbWV0aGV1cyBzdXIgOTEwMCA6IHNpIGNhIHJlcG9uZCwgbGEgYm91Y2xlIHRvdXJuZQpIRUFMVEhDSEVDSyAtLWludGVydmFsPTE1cyAtLXRpbWVvdXQ9M3MgLS1zdGFydC1wZXJpb2Q9NXMgLS1yZXRyaWVzPTMgXAogICAgQ01EIFsicHl0aG9uIiwgIi1jIiwgImltcG9ydCB1cmxsaWIucmVxdWVzdCxzeXM7IHVybGxpYi5yZXF1ZXN0LnVybG9wZW4oJ2h0dHA6Ly8xMjcuMC4wLjE6OTEwMC9tZXRyaWNzJywgdGltZW91dD0yKTsgc3lzLmV4aXQoMCkiXQoKQ01EIFsicHl0aG9uIiwgIi1tIiwgIndvcmtlci5tYWluIl0K",
+                "digestMapping": {
+                  "sha256:dbecb853f525e571995cd45e9a02fb4b36fc462a1d31b316b5240e554f8623e3": "step1",
+                  "sha256:ede9f916a68898af8c1be9c9355854c85cbd42ffb0428cf0558596675dced379": "step0"
+                },
+                "filename": "Dockerfile",
+                "language": "Dockerfile",
+                "llbDefinition": [
+                  {
+                    "id": "step0",
+                    "op": {
+                      "Op": {
+                        "source": {
+                          "attrs": {
+                            "local.differ": "none",
+                            "local.followpaths": "[\"Dockerfile\",\"Dockerfile.dockerignore\",\"dockerfile\"]",
+                            "local.sharedkeyhint": "dockerfile"
+                          },
+                          "identifier": "local://dockerfile"
+                        }
+                      },
+                      "constraints": {}
+                    }
+                  },
+                  {
+                    "id": "step1",
+                    "inputs": [
+                      "step0:0"
+                    ],
+                    "op": {
+                      "Op": {}
+                    }
+                  }
+                ]
+              }
+            ],
+            "locations": {
+              "step0": {
+                "locations": [
+                  {
+                    "ranges": [
+                      {
+                        "end": {
+                          "line": 12
+                        },
+                        "start": {
+                          "line": 12
+                        }
+                      }
+                    ]
+                  }
+                ]
+              },
+              "step1": {
+                "locations": [
+                  {
+                    "ranges": [
+                      {
+                        "end": {
+                          "line": 17
+                        },
+                        "start": {
+                          "line": 17
+                        }
+                      }
+                    ]
+                  }
+                ]
+              },
+              "step10": {
+                "locations": [
+                  {
+                    "ranges": [
+                      {
+                        "end": {
+                          "line": 45
+                        },
+                        "start": {
+                          "line": 45
+                        }
+                      }
+                    ]
+                  }
+                ]
+              },
+              "step11": {
+                "locations": [
+                  {
+                    "ranges": [
+                      {
+                        "end": {
+                          "line": 46
+                        },
+                        "start": {
+                          "line": 46
+                        }
+                      }
+                    ]
+                  }
+                ]
+              },
+              "step12": {
+                "locations": [
+                  {
+                    "ranges": [
+                      {
+                        "end": {
+                          "line": 47
+                        },
+                        "start": {
+                          "line": 47
+                        }
+                      },
+                      {
+                        "end": {
+                          "line": 48
+                        },
+                        "start": {
+                          "line": 48
+                        }
+                      }
+                    ]
+                  }
+                ]
+              },
+              "step13": {
+                "locations": [
+                  {
+                    "ranges": [
+                      {
+                        "end": {
+                          "line": 69
+                        },
+                        "start": {
+                          "line": 69
+                        }
+                      }
+                    ]
+                  }
+                ]
+              },
+              "step2": {
+                "locations": [
+                  {
+                    "ranges": [
+                      {
+                        "end": {
+                          "line": 64
+                        },
+                        "start": {
+                          "line": 64
+                        }
+                      },
+                      {
+                        "end": {
+                          "line": 65
+                        },
+                        "start": {
+                          "line": 65
+                        }
+                      }
+                    ]
+                  }
+                ]
+              },
+              "step3": {
+                "locations": [
+                  {
+                    "ranges": [
+                      {
+                        "end": {
+                          "line": 24
+                        },
+                        "start": {
+                          "line": 24
+                        }
+                      }
+                    ]
+                  }
+                ]
+              },
+              "step4": {},
+              "step5": {
+                "locations": [
+                  {
+                    "ranges": [
+                      {
+                        "end": {
+                          "line": 25
+                        },
+                        "start": {
+                          "line": 25
+                        }
+                      }
+                    ]
+                  }
+                ]
+              },
+              "step6": {
+                "locations": [
+                  {
+                    "ranges": [
+                      {
+                        "end": {
+                          "line": 32
+                        },
+                        "start": {
+                          "line": 32
+                        }
+                      },
+                      {
+                        "end": {
+                          "line": 33
+                        },
+                        "start": {
+                          "line": 33
+                        }
+                      },
+                      {
+                        "end": {
+                          "line": 34
+                        },
+                        "start": {
+                          "line": 34
+                        }
+                      }
+                    ]
+                  }
+                ]
+              },
+              "step7": {
+                "locations": [
+                  {
+                    "ranges": [
+                      {
+                        "end": {
+                          "line": 67
+                        },
+                        "start": {
+                          "line": 67
+                        }
+                      }
+                    ]
+                  }
+                ]
+              },
+              "step8": {
+                "locations": [
+                  {
+                    "ranges": [
+                      {
+                        "end": {
+                          "line": 39
+                        },
+                        "start": {
+                          "line": 39
+                        }
+                      }
+                    ]
+                  }
+                ]
+              },
+              "step9": {
+                "locations": [
+                  {
+                    "ranges": [
+                      {
+                        "end": {
+                          "line": 42
+                        },
+                        "start": {
+                          "line": 42
+                        }
+                      },
+                      {
+                        "end": {
+                          "line": 43
+                        },
+                        "start": {
+                          "line": 43
+                        }
+                      },
+                      {
+                        "end": {
+                          "line": 44
+                        },
+                        "start": {
+                          "line": 44
+                        }
+                      }
+                    ]
+                  }
+                ]
+              }
+            }
+          },
+          "vcs": {
+            "localdir:context": "26-10\\tp02-buildkit-avance\\starter\\shop-worker",
+            "localdir:dockerfile": "26-10\\tp02-buildkit-avance\\starter\\shop-worker",
+            "revision": "cc6a3da40ef2146d1e0a9c809ded16cdda586e49",
+            "source": "https://github.com/CossiauxVictor/Docker_Cours_M2_Ynov_Docker.git"
+          }
+        },
+        "finishedOn": "2026-10-26T11:25:07.373249303Z",
+        "invocationId": "wkd9w13evh97urgf9qqlv3wzi",
+        "startedOn": "2026-10-26T11:25:06.168601651Z"
+      }
+    }
+  }
+}

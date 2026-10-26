@@ -1,0 +1,37 @@
+# syntax=docker/dockerfile:1.7
+# Bonus B1 : installation des deps SANS reseau (--network=none) a partir d'un cache mount pre-rempli.
+#
+#   1) job "prefill" (seul moment avec acces reseau, au registre interne) :
+#      docker build -f Dockerfile.offline --target prefill --secret id=pipconf,src=pip.conf .
+#   2) build hermetique, le RUN pip install n'a aucune interface reseau :
+#      docker build -f Dockerfile.offline -t worker:offline .
+
+FROM python:3.12.15-slim-bookworm AS base
+ENV PYTHONDONTWRITEBYTECODE=1 PYTHONUNBUFFERED=1 PIP_DISABLE_PIP_VERSION_CHECK=1 PATH=/opt/venv/bin:$PATH
+WORKDIR /app
+
+# --- remplit le "wheelhouse" (cache mount partage par id) avec toutes les wheels necessaires
+FROM base AS prefill
+ARG TARGETARCH
+COPY requirements.txt requirements-dev.txt ./
+# hadolint ignore=DL3042
+RUN --mount=type=secret,id=pipconf,target=/etc/pip.conf,required=true \
+    --mount=type=cache,target=/wheelhouse,id=wheelhouse-${TARGETARCH},sharing=locked \
+    pip download --dest /wheelhouse -r requirements-dev.txt
+
+# --- build sans reseau : pip ne peut taper que dans /wheelhouse
+FROM base AS builder
+ARG TARGETARCH
+RUN python -m venv /opt/venv
+COPY requirements.txt ./
+RUN --network=none \
+    --mount=type=cache,target=/wheelhouse,id=wheelhouse-${TARGETARCH},sharing=locked,readonly \
+    pip install --no-cache-dir --no-index --find-links=/wheelhouse -r requirements.txt
+
+FROM base AS runtime
+RUN groupadd --system --gid 10001 worker \
+ && useradd --system --uid 10001 --gid worker --no-create-home --shell /usr/sbin/nologin worker
+COPY --from=builder /opt/venv /opt/venv
+COPY worker ./worker
+USER 10001:10001
+CMD ["python", "-m", "worker.main"]

@@ -1,0 +1,108 @@
+# Registre prive "pret pour l'entreprise" - TP03
+#   docker compose up -d                       -> registry (TLS+auth) + mirror Docker Hub + UI
+#   docker compose --profile client up -d      -> + un "poste client" Linux (docker:dind) pour tester
+# Prerequis : ./gen-certs.sh et ./gen-htpasswd.sh
+name: tp03
+
+services:
+  registry:
+    image: registry:2.8.3
+    restart: unless-stopped
+    ports:
+      - "5000:5000"
+    volumes:
+      - registry-data:/var/lib/registry
+      - ./config.yml:/etc/docker/registry/config.yml:ro
+      - ./certs/registry.crt:/certs/registry.crt:ro
+      - ./certs/registry.key:/certs/registry.key:ro
+      - ./auth/htpasswd:/auth/htpasswd:ro
+    networks:
+      default:
+        aliases:
+          - registry.local
+    healthcheck:
+      # /debug/health ecoute que sur 127.0.0.1 dans le conteneur, pas besoin d'auth ni de TLS
+      test: ["CMD", "wget", "-q", "-O", "/dev/null", "http://127.0.0.1:5005/debug/health"]
+      interval: 10s
+      timeout: 3s
+      retries: 3
+      start_period: 5s
+
+  registry-mirror:
+    image: registry:2.8.3
+    restart: unless-stopped
+    ports:
+      - "5001:5001"
+    volumes:
+      - mirror-data:/var/lib/registry
+      - ./config-mirror.yml:/etc/docker/registry/config.yml:ro
+    healthcheck:
+      test: ["CMD", "wget", "-q", "-O", "/dev/null", "http://127.0.0.1:5005/debug/health"]
+      interval: 10s
+      timeout: 3s
+      retries: 3
+      start_period: 5s
+
+  registry-ui:
+    image: joxit/docker-registry-ui:2.5.7
+    restart: unless-stopped
+    ports:
+      - "8080:80"
+    environment:
+      REGISTRY_TITLE: "Shop SAS - registre prive"
+      SINGLE_REGISTRY: "true"
+      # l'UI fait proxy vers le registre -> meme origine, pas besoin de CORS, et le basic auth passe a travers
+      NGINX_PROXY_PASS_URL: "https://registry.local:5000"
+      DELETE_IMAGES: "true"
+      SHOW_CONTENT_DIGEST: "true"
+      SHOW_CATALOG_NB_TAGS: "true"
+      TAGLIST_ORDER: "num-desc;alpha-asc"
+    depends_on:
+      registry:
+        condition: service_healthy
+
+  # "poste client" Linux pour faire les validations comme sur une vraie machine :
+  # /etc/docker/certs.d, daemon.json (mirror)... (impossible sans droits admin sur Docker Desktop Windows)
+  client:
+    image: docker:28.5.1-dind
+    profiles: ["client"]
+    privileged: true
+    hostname: poste-client
+    environment:
+      DOCKER_TLS_CERTDIR: ""
+    # Docker Desktop refuse un point de montage qui contient ":" (meme en syntaxe longue),
+    # donc on monte la CA a cote et on la copie dans /etc/docker/certs.d/registry.local:5000/ au demarrage
+    entrypoint:
+      - sh
+      - -c
+      - |
+        mkdir -p /etc/docker/certs.d/registry.local:5000
+        cp /client-ca/ca.crt /etc/docker/certs.d/registry.local:5000/ca.crt
+        exec dockerd-entrypoint.sh
+    volumes:
+      - client-docker:/var/lib/docker
+      - ./certs/ca.crt:/client-ca/ca.crt:ro
+      - ./client/daemon.json:/etc/docker/daemon.json:ro
+      - ../:/tp03
+    depends_on:
+      registry:
+        condition: service_healthy
+      registry-mirror:
+        condition: service_healthy
+
+  # bonus B1 : serveur trivy partage par l'equipe (la base de vulns est telechargee une seule fois)
+  trivy-server:
+    image: aquasec/trivy:0.67.2
+    profiles: ["scan"]
+    restart: unless-stopped
+    command: ["server", "--listen", "0.0.0.0:4954", "--token", "${TRIVY_TOKEN:-change-me}", "--cache-dir", "/cache"]
+    volumes:
+      - trivy-db:/cache
+    ports:
+      - "4954:4954"
+
+volumes:
+  registry-data:
+  mirror-data:
+  client-docker:
+  trivy-db:

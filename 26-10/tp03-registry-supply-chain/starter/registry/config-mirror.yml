@@ -1,0 +1,35 @@
+# pull-through cache de Docker Hub (mirror). Lecture seule cote clients : on peut pas y pousser.
+version: 0.1
+
+log:
+  level: info
+  formatter: json
+  fields:
+    service: mirror
+
+storage:
+  filesystem:
+    rootdirectory: /var/lib/registry
+  # le mode proxy a besoin de delete pour faire expirer les blobs en cache
+  delete:
+    enabled: true
+  cache:
+    blobdescriptor: inmemory
+
+http:
+  addr: :5001
+  debug:
+    addr: 127.0.0.1:5005
+
+proxy:
+  remoteurl: https://registry-1.docker.io
+  # pour eviter le rate limit anonyme de Docker Hub (100 pulls / 6h), on met un compte (token en lecture seule) :
+  # username: shopsas-mirror
+  # password: dckr_pat_xxx
+  ttl: 168h
+
+health:
+  storagedriver:
+    enabled: true
+    interval: 10s
+    threshold: 3

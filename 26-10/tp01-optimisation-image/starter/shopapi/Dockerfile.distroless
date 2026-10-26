@@ -1,0 +1,40 @@
+# syntax=docker/dockerfile:1.7
+# Bonus B1 : variante distroless (pas de shell, pas de gestionnaire de paquets, user nonroot par defaut)
+FROM node:20.20.2-alpine3.22 AS build-base
+WORKDIR /app
+COPY package.json package-lock.json ./
+
+# attention : distroless est base sur debian (glibc) -> on installe les deps dans une image debian
+# et pas alpine (musl), sinon les modules natifs eventuels seraient pas compatibles
+FROM node:20.20.2-bookworm-slim AS deps
+WORKDIR /app
+COPY package.json package-lock.json ./
+RUN --mount=type=cache,target=/root/.npm \
+    npm ci --omit=dev --ignore-scripts --no-audit --no-fund
+
+FROM build-base AS test
+RUN --mount=type=cache,target=/root/.npm \
+    npm ci --ignore-scripts --no-audit --no-fund
+COPY src ./src
+COPY test ./test
+RUN npm test && npm run lint
+
+FROM gcr.io/distroless/nodejs20-debian12:nonroot AS runtime
+ARG APP_VERSION=dev
+ARG GIT_SHA=unknown
+ARG SOURCE_URL=https://github.com/CossiauxVictor/Docker_Cours_M2_Ynov_Docker
+LABEL org.opencontainers.image.title="shopapi" \
+      org.opencontainers.image.version="${APP_VERSION}" \
+      org.opencontainers.image.revision="${GIT_SHA}" \
+      org.opencontainers.image.source="${SOURCE_URL}"
+ENV NODE_ENV=production PORT=3000 APP_VERSION=${APP_VERSION}
+WORKDIR /app
+COPY --from=deps /app/node_modules ./node_modules
+COPY --from=test /app/package.json ./
+COPY src ./src
+EXPOSE 3000
+# pas de shell ni de wget : healthcheck en forme exec avec le binaire node de l'image
+HEALTHCHECK --interval=10s --timeout=3s --start-period=5s --retries=3 \
+    CMD ["/nodejs/bin/node", "-e", "fetch('http://127.0.0.1:3000/health').then(r=>process.exit(r.ok?0:1)).catch(()=>process.exit(1))"]
+# l'ENTRYPOINT de distroless est deja /nodejs/bin/node
+CMD ["src/server.js"]
