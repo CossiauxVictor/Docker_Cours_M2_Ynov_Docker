@@ -1,0 +1,176 @@
+# Stack d'observabilite, lancee A COTE de la stack du TP04 (projet "shop").
+# Elle rejoint les reseaux existants shop_front / shop_back pour scraper l'API et le worker.
+#   (stack TP04 demarree avant, sinon les reseaux external existent pas)
+#   docker compose -f compose.observability.yml up -d --wait
+#   http://localhost:9090  (prometheus)   http://localhost:3001  (grafana admin/admin)
+name: observability
+
+x-logging: &logging
+  driver: json-file
+  options:
+    max-size: "10m"
+    max-file: "3"
+
+services:
+  prometheus:
+    image: prom/prometheus:v2.54.1
+    restart: unless-stopped
+    logging: *logging
+    command:
+      - --config.file=/etc/prometheus/prometheus.yml
+      - --storage.tsdb.path=/prometheus
+      - --storage.tsdb.retention.time=15d
+      # pour recharger la conf sans redemarrer : curl -X POST localhost:9090/-/reload
+      - --web.enable-lifecycle
+    volumes:
+      - ./prometheus/prometheus.yml:/etc/prometheus/prometheus.yml:ro
+      - ./prometheus/alerts.yml:/etc/prometheus/alerts.yml:ro
+      - ./prometheus/rules.yml:/etc/prometheus/rules.yml:ro
+      - prometheus-data:/prometheus
+    ports:
+      - "9090:9090"
+    networks:
+      - default
+      # front pour l'api (resolution DNS "api" -> tous les replicas), back pour le worker
+      - shop_front
+      - shop_back
+    healthcheck:
+      test: ["CMD", "wget", "-q", "-O", "/dev/null", "http://127.0.0.1:9090/-/ready"]
+      interval: 10s
+      timeout: 3s
+      retries: 5
+
+  cadvisor:
+    image: ghcr.io/google/cadvisor:v0.53.0
+    restart: unless-stopped
+    logging: *logging
+    privileged: true
+    devices:
+      - /dev/kmsg
+    command:
+      # Docker Desktop ici utilise le stockage d'images containerd (snapshotter) : le handler docker de
+      # cadvisor (meme en v0.53) plante sur chaque conteneur ("failed to identify the read-write layer ID")
+      # et les ignore. On le desactive (socket bidon) -> les conteneurs sont vus en "raw cgroup"
+      # (/docker/<id>) et c'est docker-meta qui donne le nom/service (jointure dans prometheus/rules.yml).
+      # Sur un docker linux classique (overlay2) : --docker_only=true suffit et on a les labels direct.
+      - --docker_only=false
+      - --docker=unix:///var/run/pas-de-docker.sock
+      - --housekeeping_interval=10s
+      # on enleve les metriques lourdes et inutiles ici
+      - --disable_metrics=percpu,sched,tcp,udp,hugetlb,referenced_memory,cpu_topology,resctrl
+    volumes:
+      - /:/rootfs:ro
+      - /var/run:/var/run:ro
+      - /sys:/sys:ro
+      - /var/lib/docker/:/var/lib/docker:ro
+      - /dev/disk/:/dev/disk:ro
+    networks:
+      - default
+
+  # mini exporter "id du conteneur -> nom / service / projet" pour completer cadvisor (voir au dessus)
+  # toutes les 15 s : docker ps -> fichier au format prometheus, servi par busybox httpd
+  docker-meta-writer:
+    image: docker:28.5.1-cli
+    restart: unless-stopped
+    logging: *logging
+    entrypoint:
+      - /bin/sh
+      - -c
+      - |
+        while true; do
+          {
+            echo '# TYPE container_meta_info gauge'
+            docker ps --no-trunc --format '{{.ID}}|{{.Names}}|{{.Label "com.docker.compose.service"}}|{{.Label "com.docker.compose.project"}}' |
+              awk -F'|' '{ printf "container_meta_info{id=\"/docker/%s\",name=\"%s\",service=\"%s\",project=\"%s\"} 1\n", $$1, $$2, $$3, $$4 }'
+          } > /www/metrics.tmp && mv /www/metrics.tmp /www/metrics
+          sleep 15
+        done
+    volumes:
+      - /var/run/docker.sock:/var/run/docker.sock:ro
+      - docker-meta:/www
+    networks:
+      - default
+
+  docker-meta:
+    image: busybox:1.36.1
+    restart: unless-stopped
+    logging: *logging
+    command: ["httpd", "-f", "-p", "9101", "-h", "/www"]
+    volumes:
+      - docker-meta:/www:ro
+    networks:
+      - default
+
+  loki:
+    image: grafana/loki:3.1.1
+    restart: unless-stopped
+    logging: *logging
+    command: ["-config.file=/etc/loki/loki.yml"]
+    volumes:
+      - ./loki/loki.yml:/etc/loki/loki.yml:ro
+      - loki-data:/loki
+    networks:
+      - default
+    healthcheck:
+      test: ["CMD", "wget", "-q", "-O", "/dev/null", "http://127.0.0.1:3100/ready"]
+      interval: 10s
+      timeout: 3s
+      retries: 10
+      start_period: 20s
+
+  promtail:
+    image: grafana/promtail:3.1.1
+    restart: unless-stopped
+    logging: *logging
+    command: ["-config.file=/etc/promtail/promtail.yml"]
+    volumes:
+      - ./promtail/promtail.yml:/etc/promtail/promtail.yml:ro
+      # lecture des logs via l'API docker (docker_sd_configs). Meme remarque qu'au TP04 :
+      # acces a la socket = root sur l'hote, a mettre derriere un docker-socket-proxy en vrai
+      - /var/run/docker.sock:/var/run/docker.sock:ro
+    networks:
+      - default
+    depends_on:
+      loki:
+        condition: service_healthy
+
+  grafana:
+    image: grafana/grafana:11.2.0
+    restart: unless-stopped
+    logging: *logging
+    environment:
+      GF_SECURITY_ADMIN_USER: admin
+      GF_SECURITY_ADMIN_PASSWORD: admin
+      GF_USERS_ALLOW_SIGN_UP: "false"
+      # le dashboard Shop SAS en page d'accueil
+      GF_DASHBOARDS_DEFAULT_HOME_DASHBOARD_PATH: /var/lib/grafana/dashboards/shop.json
+    volumes:
+      # tout est provisionne par fichiers : datasources + dashboards, aucun clic
+      - ./grafana/provisioning:/etc/grafana/provisioning:ro
+      - ./grafana/dashboards:/var/lib/grafana/dashboards:ro
+      - grafana-data:/var/lib/grafana
+    ports:
+      - "3001:3000"
+    networks:
+      - default
+    depends_on:
+      prometheus:
+        condition: service_healthy
+      loki:
+        condition: service_healthy
+    healthcheck:
+      test: ["CMD", "wget", "-q", "-O", "/dev/null", "http://127.0.0.1:3000/api/health"]
+      interval: 10s
+      timeout: 3s
+      retries: 5
+
+networks:
+  default:
+  shop_front: { external: true }
+  shop_back:  { external: true }
+
+volumes:
+  prometheus-data:
+  loki-data:
+  grafana-data:
+  docker-meta:

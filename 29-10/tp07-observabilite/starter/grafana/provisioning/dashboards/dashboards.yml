@@ -1,0 +1,10 @@
+apiVersion: 1
+
+providers:
+  - name: shop
+    folder: Shop SAS
+    type: file
+    # les modifs faites dans l'UI sont pas sauvegardees : la source de verite c'est le JSON dans git
+    allowUiUpdates: false
+    options:
+      path: /var/lib/grafana/dashboards

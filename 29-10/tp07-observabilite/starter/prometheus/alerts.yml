@@ -1,0 +1,77 @@
+groups:
+  - name: shop
+    rules:
+      # plus aucun replica de l'api ne repond (absent = le DNS renvoie plus rien, ex: api arretee)
+      - alert: ApiDown
+        expr: sum(up{job="api"}) == 0 or absent(up{job="api"})
+        for: 30s
+        labels:
+          severity: critical
+        annotations:
+          summary: "API Shop SAS down"
+          description: "Aucun replica de l'API ne repond au scrape depuis 30s."
+
+      - alert: ApiReplicaDown
+        expr: up{job="api"} == 0
+        for: 30s
+        labels:
+          severity: warning
+        annotations:
+          summary: "Replica API {{ $labels.instance }} down"
+
+      - alert: WorkerDown
+        expr: sum(up{job="worker"}) == 0 or absent(up{job="worker"})
+        for: 30s
+        labels:
+          severity: critical
+        annotations:
+          summary: "Worker Shop SAS down"
+
+      # plus de 5% de reponses 5xx sur 1 min
+      - alert: ApiHighErrorRate
+        expr: |
+          sum(rate(http_request_duration_seconds_count{job="api",status=~"5.."}[1m]))
+            / sum(rate(http_request_duration_seconds_count{job="api"}[1m])) > 0.05
+        for: 30s
+        labels:
+          severity: critical
+        annotations:
+          summary: "API : {{ $value | humanizePercentage }} de 5xx"
+
+      # p95 > 500 ms
+      - alert: ApiSlowP95
+        expr: |
+          histogram_quantile(0.95, sum by (le) (rate(http_request_duration_seconds_bucket{job="api"}[1m]))) > 0.5
+        for: 1m
+        labels:
+          severity: warning
+        annotations:
+          summary: "API : p95 a {{ $value | humanizeDuration }}"
+
+      # un conteneur qui redemarre : sa date de demarrage change (metriques nommees : voir rules.yml)
+      - alert: ContainerRestarting
+        expr: changes(container:start_time_seconds{project="shop"}[5m]) > 0
+        labels:
+          severity: warning
+        annotations:
+          summary: "{{ $labels.name }} a redemarre dans les 5 dernieres minutes"
+
+      # OOM kill par le noyau. ContainerMemoryHigh (en dessous) le rate souvent : le pic est trop court
+      - alert: ContainerOOMKilled
+        expr: increase(container:oom_events_total{project="shop"}[5m]) > 0
+        labels:
+          severity: critical
+        annotations:
+          summary: "{{ $labels.name }} : OOM kill (limite memoire atteinte)"
+
+      # memoire > 90% de la limite (seulement les conteneurs qui ont une limite :
+      # sans limite cadvisor renvoie une valeur enorme, donc le ratio reste ~0)
+      - alert: ContainerMemoryHigh
+        expr: |
+          (container:memory_working_set_bytes{project="shop"}
+            / on (id) container:memory_limit_bytes{project="shop"}) > 0.9
+        for: 30s
+        labels:
+          severity: warning
+        annotations:
+          summary: "{{ $labels.name }} a {{ $value | humanizePercentage }} de sa limite memoire"

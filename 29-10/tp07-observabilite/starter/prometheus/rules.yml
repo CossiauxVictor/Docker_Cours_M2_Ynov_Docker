@@ -1,0 +1,36 @@
+# Recording rules : metriques cadvisor (par id de cgroup) + container_meta_info (docker-meta)
+# -> metriques par conteneur avec name / service / project, utilisees par le dashboard et les alertes.
+groups:
+  - name: containers
+    rules:
+      - record: container:memory_working_set_bytes
+        expr: |
+          max by (id) (container_memory_working_set_bytes{id=~"/docker/[0-9a-f]{64}"})
+            * on (id) group_left (name, service, project) container_meta_info
+
+      - record: container:memory_limit_bytes
+        expr: |
+          max by (id) (container_spec_memory_limit_bytes{id=~"/docker/[0-9a-f]{64}"})
+            * on (id) group_left (name, service, project) container_meta_info
+
+      - record: container:cpu_usage:rate1m
+        expr: |
+          sum by (id) (rate(container_cpu_usage_seconds_total{id=~"/docker/[0-9a-f]{64}"}[1m]))
+            * on (id) group_left (name, service, project) container_meta_info
+
+      - record: container:start_time_seconds
+        expr: |
+          max by (id) (container_start_time_seconds{id=~"/docker/[0-9a-f]{64}"})
+            * on (id) group_left (name, service, project) container_meta_info
+
+      # compteur d'OOM du cgroup : seul moyen fiable de voir un OOM, le pic memoire dure
+      # moins longtemps que l'intervalle de collecte (vu au test : ratio max mesure 80%)
+      - record: container:oom_events_total
+        expr: |
+          max by (id) (container_oom_events_total{id=~"/docker/[0-9a-f]{64}"})
+            * on (id) group_left (name, service, project) container_meta_info
+
+      - record: container:network_receive_bytes:rate1m
+        expr: |
+          sum by (id) (rate(container_network_receive_bytes_total{id=~"/docker/[0-9a-f]{64}"}[1m]))
+            * on (id) group_left (name, service, project) container_meta_info
