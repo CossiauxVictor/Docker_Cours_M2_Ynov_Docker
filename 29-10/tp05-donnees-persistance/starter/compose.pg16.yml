@@ -1,0 +1,14 @@
+# Surcharge pour la montee de version : PG16 sur un NOUVEAU volume (pgdata16)
+# l'ancien volume pgdata (PG14) est garde intact -> retour arriere = relancer sans ce fichier
+#   docker compose -f compose.yml -f compose.pg16.yml up -d --wait
+services:
+  db:
+    image: postgres:16.4-alpine
+    # !override et pas !reset : !reset vide la cle et ignore la valeur donnee (vu en testant)
+    volumes: !override
+      - pgdata16:/var/lib/postgresql/data
+    healthcheck:
+      # -h 127.0.0.1 : sinon "healthy" pendant l'init (pg_isready passe par la socket unix)
+      test: ["CMD-SHELL", "pg_isready -h 127.0.0.1 -U shop -d shop"]
+volumes:
+  pgdata16:

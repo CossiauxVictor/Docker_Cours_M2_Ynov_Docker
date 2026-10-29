@@ -1,0 +1,39 @@
+# Sidecar de sauvegarde planifiee pour la stack du TP04 (projet "shop")
+# A ajouter aux fichiers de la stack, depuis tp04-compose-entreprise/solution :
+#   docker compose -f compose.yml -f compose.prod.yml -f ../../tp05-donnees-persistance/compose.backup.yml up -d --wait
+# Les dumps sont dans le volume shop_pgbackups (daily/weekly/monthly + lien "last").
+services:
+  backup:
+    image: prodrigestivill/postgres-backup-local:16
+    restart: unless-stopped
+    environment:
+      POSTGRES_HOST: db
+      POSTGRES_DB: shop
+      POSTGRES_USER: shop
+      # meme secret que la base, rien en clair
+      POSTGRES_PASSWORD_FILE: /run/secrets/db_password
+      POSTGRES_EXTRA_OPTS: "-Z6 --format=custom"
+      # @every 1m pour le TP, en vrai : "@daily" ou "0 3 * * *"
+      SCHEDULE: "${BACKUP_SCHEDULE:-@every 1m}"
+      BACKUP_KEEP_DAYS: 7
+      BACKUP_KEEP_WEEKS: 4
+      BACKUP_KEEP_MONTHS: 6
+    secrets:
+      - db_password
+    volumes:
+      - pgbackups:/backups
+    networks:
+      - back
+    depends_on:
+      db:
+        condition: service_healthy
+    logging:
+      driver: json-file
+      options:
+        max-size: "10m"
+        max-file: "3"
+
+volumes:
+  # en vrai il faudrait que ce soit sur un AUTRE disque / une autre machine (cf bonus B2 MinIO) :
+  # un backup sur le meme serveur que la base protege pas d'une panne disque ou d'un rm -rf
+  pgbackups:
