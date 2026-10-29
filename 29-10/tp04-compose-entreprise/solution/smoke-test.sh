@@ -30,8 +30,9 @@ else
 fi
 
 echo "== 2. /products + cache redis"
-call -o /dev/null "${BASE_URL}/products"            # premier appel : remplit le cache (ou HIT si deja chaud)
-cache=$(call -o /dev/null -D - "${BASE_URL}/products" | tr -d '\r' | awk -F': ' 'tolower($1)=="x-cache"{print $2}')
+# || true : avec set -e un curl en echec arretait le script sans aucun message
+call -o /dev/null "${BASE_URL}/products" || true    # premier appel : remplit le cache (ou HIT si deja chaud)
+cache=$(call -o /dev/null -D - "${BASE_URL}/products" | tr -d '\r' | awk -F': ' 'tolower($1)=="x-cache"{print $2}' || true)
 if [ "$cache" = "HIT" ]; then ok "X-Cache: HIT au 2e appel"; else ko "X-Cache: '${cache}' (attendu HIT)"; fi
 
 echo "== 3. creation d'une commande"
