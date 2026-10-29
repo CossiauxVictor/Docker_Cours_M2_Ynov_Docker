@@ -1,0 +1,93 @@
+# INCIDENT P1 - compose CORRIGE (la version cassee est gardee dans original/compose.yml)
+# Chaque correction est marquee [Ax] = numero de l'anomalie dans le rapport d'incident.
+#   docker compose up -d --wait && curl -i localhost:8081/products
+name: incident
+
+x-hc: &hc
+  interval: 5s
+  timeout: 3s
+  retries: 5
+  start_period: 10s
+
+services:
+  front:
+    image: nginx:1.27-alpine
+    ports:
+      - "8081:80"
+    volumes:
+      # [A3] on monte le FICHIER, pas le dossier ./nginx sur un fichier
+      - ./nginx/default.conf:/etc/nginx/conf.d/default.conf:ro
+    networks:
+      - public
+    depends_on:
+      # [A11] attendre que l'api soit vraiment prete, pas juste "creee"
+      api:
+        condition: service_healthy
+    # [A12] healthcheck pour que `ps` affiche healthy (wget est dans l'image alpine)
+    healthcheck:
+      <<: *hc
+      test: ["CMD", "wget", "-q", "-O", "/dev/null", "http://127.0.0.1/health"]
+
+  api:
+    build: ../../tp04-compose-entreprise/solution/apps/shopapi
+    # [A1] plus de container_name : incompatible avec replicas: 2 (deux conteneurs meme nom)
+    # [A4] plus de `command: node server.js` : le fichier est dans src/, le CMD de l'image est bon
+    environment:
+      # [A5] PORT 8080 -> 3000 : nginx et le healthcheck de l'image attendent 3000
+      PORT: 3000
+      # [A6] "databse" -> "db" (faute de frappe = DNS qui repond pas)
+      # (bonus B2) on passe par l alias "database" plutot que par le nom du service
+      DATABASE_URL: postgres://shop:shop@database:5432/shop
+      # [A9] redis a un mot de passe (requirepass) -> il faut le passer dans l'URL
+      REDIS_URL: redis://:r3dis@redis:6379
+    networks:
+      - public
+      # [A7] l'api doit aussi etre sur backend pour joindre db et redis
+      - backend
+    depends_on:
+      db:
+        condition: service_healthy
+      # [A11] redis manquait dans les dependances
+      redis:
+        condition: service_healthy
+    deploy:
+      replicas: 2
+
+  db:
+    image: postgres:16.4-alpine
+    environment:
+      POSTGRES_USER: shop
+      POSTGRES_PASSWORD: shop
+      POSTGRES_DB: shop
+    volumes:
+      - pgdata:/var/lib/postgresql/data
+      - ../../tp04-compose-entreprise/solution/db/init.sql:/docker-entrypoint-initdb.d/init.sql:ro
+    networks:
+      backend:
+        # (bonus B2) pour basculer sur une autre base (ex: la PG16 du TP05) on deplace juste l'alias
+        aliases: [database]
+    healthcheck:
+      <<: *hc
+      # [A10] user shop (postgres existe pas ici) + -h 127.0.0.1 pour pas etre healthy pendant l'init
+      test: ["CMD-SHELL", "pg_isready -h 127.0.0.1 -U shop -d shop"]
+
+  redis:
+    image: redis:7.4-alpine
+    command: ["redis-server", "--requirepass", "r3dis"]
+    # [A8] plus de network_mode: host -> redis etait hors des reseaux docker (pas de DNS "redis")
+    #      ET ecoutait sur toutes les interfaces de l'hote
+    networks:
+      - backend
+    healthcheck:
+      <<: *hc
+      test: ["CMD-SHELL", "redis-cli -a r3dis --no-auth-warning ping | grep -q PONG"]
+
+networks:
+  # [A2] public ne doit PAS etre internal : sinon pas de passerelle -> le port 8081 n'est jamais publie
+  public:
+  # c'est backend qui doit etre isole (db + redis inaccessibles de l'exterieur)
+  backend:
+    internal: true
+
+volumes:
+  pgdata:
