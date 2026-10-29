@@ -1,0 +1,31 @@
+# Bonus B1 - `docker compose watch` a la place du bind mount
+#   docker compose -f compose.yml -f compose.override.yml -f compose.watch.yml up -d --wait
+#   docker compose -f compose.yml -f compose.override.yml -f compose.watch.yml watch
+#
+# Pourquoi : sous Docker Desktop Windows, le bind mount de compose.override.yml marche (le fichier est a jour
+# dans le conteneur) MAIS les evenements inotify ne traversent pas NTFS -> WSL2, donc `node --watch` voit rien.
+# compose watch surveille cote hote et copie le fichier dans le conteneur -> inotify se declenche dedans.
+services:
+  api:
+    volumes: !reset []
+    develop:
+      watch:
+        # code : copie a chaud, node --watch relance le process
+        - action: sync
+          path: ./apps/shopapi/src
+          target: /app/src
+        # dependances : il faut refaire l'image (npm ci)
+        - action: rebuild
+          path: ./apps/shopapi/package.json
+        - action: rebuild
+          path: ./apps/shopapi/package-lock.json
+
+  worker:
+    develop:
+      watch:
+        # python sans auto reload : on sync puis on redemarre le conteneur
+        - action: sync+restart
+          path: ./apps/shop-worker/worker
+          target: /app/worker
+        - action: rebuild
+          path: ./apps/shop-worker/requirements.txt
