@@ -1,0 +1,19 @@
+# secrets : le pip.conf passe UNIQUEMENT par --secret
+pip.conf
+pip.conf.*
+.env
+*.key
+*.pem
+
+.git
+.gitignore
+Dockerfile*
+.dockerignore
+*.md
+*.tar
+
+__pycache__
+*.pyc
+.pytest_cache
+.ruff_cache
+.venv

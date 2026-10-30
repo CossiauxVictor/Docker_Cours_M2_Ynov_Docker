@@ -1,0 +1,9 @@
+# syntax=docker/dockerfile:1.7
+# "Runner CI" local : le poste Windows n'a ni jq, ni cosign, ni bash posix complet.
+# docker:cli embarque deja le client docker + les plugins buildx et compose.
+FROM docker:28.5.1-cli
+RUN apk add --no-cache bash git jq curl cosign
+# le depot est monte par un autre utilisateur que root (bind Windows) -> git refuse sinon
+RUN git config --system --add safe.directory '*'
+ENTRYPOINT []
+CMD ["bash"]

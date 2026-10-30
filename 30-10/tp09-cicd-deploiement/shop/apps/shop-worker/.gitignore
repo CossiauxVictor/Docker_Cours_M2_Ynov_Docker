@@ -1,0 +1,6 @@
+# config pip avec les identifiants du registre interne : jamais dans git
+pip.conf
+*.tar
+__pycache__/
+.pytest_cache/
+.ruff_cache/

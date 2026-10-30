@@ -1,0 +1,27 @@
+# secrets / fichiers locaux
+.env
+.env.*
+*.pem
+*.key
+
+# dumps et donnees
+*.sql
+*.sql.gz
+*.dump
+
+# git / outils
+.git
+.gitignore
+.vscode
+.idea
+
+# deps locales (on les reinstalle dans le build)
+node_modules
+npm-debug.log*
+*.log
+
+# fichiers docker et doc, inutiles dans l'image
+Dockerfile*
+.dockerignore
+*.md
+docker-bake.hcl

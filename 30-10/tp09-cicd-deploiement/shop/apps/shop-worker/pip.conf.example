@@ -1,0 +1,6 @@
+# Modele de pip.conf. Copier en pip.conf (gitignore) et mettre son token :
+#   cp pip.conf.example pip.conf
+# Avant il y avait le vrai mot de passe svc-ci ici -> fuite dans git, a revoquer.
+[global]
+index-url = https://pypi.org/simple
+# index-url = https://svc-ci:<TOKEN>@pypi.internal.example.com/simple

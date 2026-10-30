@@ -1,0 +1,6 @@
+.env
+secrets/*
+!secrets/.gitkeep
+apps/shop-worker/pip.conf
+# cle privee cosign de la CI (en vrai : secret CI, ou keyless OIDC)
+ci/cosign.key

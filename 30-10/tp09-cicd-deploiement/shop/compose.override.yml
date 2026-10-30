@@ -1,0 +1,40 @@
+# Surcharge DEV - chargee automatiquement par `docker compose up` (pas en prod, ou on passe des -f explicites)
+services:
+  traefik:
+    command:
+      - --providers.docker=true
+      - --providers.docker.exposedbydefault=false
+      - --providers.docker.network=shop_front
+      - --entrypoints.web.address=:80
+      - --ping=true
+      - --accesslog=true
+      # dashboard sur :8080, uniquement en dev
+      - --api.insecure=true
+      - --api.dashboard=true
+    ports:
+      - "8080:8080"
+
+  api:
+    # node --watch relance le process a chaque modif dans src/
+    command: ["node", "--watch", "src/server.js"]
+    environment:
+      LOG_LEVEL: debug
+      NODE_ENV: development
+    volumes:
+      - ./apps/shopapi/src:/app/src:ro
+    ports:
+      - "3000:3000"
+
+  worker:
+    environment:
+      LOG_LEVEL: DEBUG
+
+  db:
+    ports:
+      - "5432:5432"
+
+networks:
+  back:
+    # un reseau internal ne peut PAS publier de port (pas de passerelle) -> en dev on l'ouvre
+    # pour pouvoir brancher DBeaver/psql sur localhost:5432
+    internal: false
