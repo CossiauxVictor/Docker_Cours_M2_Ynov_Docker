@@ -1,0 +1,8 @@
+CONTENEUR                      USER   PRIV   CAPS   RO     MEM    PIDS   NNP    SOCK    DETAIL
+shop-worker-1                  ok     ok     X      X      X      X      X      ok      capdrop=aucun,rootfs rw,pas de limite memoire,pids illimite,pas de no-new-privileges
+shop-api-2                     ok     ok     X      X      X      X      X      ok      capdrop=aucun,rootfs rw,pas de limite memoire,pids illimite,pas de no-new-privileges
+shop-db-1                      X      ok     X      X      X      X      X      ok      user=root(defaut),capdrop=aucun,rootfs rw,pas de limite memoire,pids illimite,pas de no-new-privileges
+shop-redis-1                   X      ok     X      X      X      X      X      ok      user=root(defaut),capdrop=aucun,rootfs rw,pas de limite memoire,pids illimite,pas de no-new-privileges
+shop-traefik-1                 X      ok     X      X      X      X      X      X       user=root(defaut),capdrop=aucun,rootfs rw,pas de limite memoire,pids illimite,pas de no-new-privileges,socket docker montee
+
+29 ecart(s)

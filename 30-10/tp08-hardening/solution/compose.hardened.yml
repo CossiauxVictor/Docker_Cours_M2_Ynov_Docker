@@ -1,0 +1,159 @@
+# Surcharge "durcie" de la stack Shop SAS (TP08), a poser sur le compose du TP04 :
+#
+#   T4=../../../29-10/tp04-compose-entreprise/solution
+#   docker compose -f $T4/compose.yml -f compose.hardened.yml up -d --wait
+#   docker compose -f $T4/compose.yml -f $T4/compose.prod.yml -f compose.hardened.yml up -d --wait   (prod)
+#
+# Le dossier du projet reste celui du TP04 (c'est le 1er -f) : les chemins relatifs (secrets, init.sql)
+# sont resolus la-bas, rien a copier.
+#
+# Chaque directive a un commentaire "menace :" = ce qu'elle empeche concretement.
+# Tout a ete trouve par essai/erreur, voir RAPPORT.md partie 3.
+
+# ---------- socle commun a tous les services ----------
+x-hardening: &hardening
+  # menace : un attaquant qui a une RCE ne peut pas modifier les binaires / poser un webshell / un cron
+  read_only: true
+  # menace : capabilities root du noyau (chown arbitraire, raw sockets pour du spoofing ARP/ICMP,
+  # mknod, kill d'autres process...). On part de zero et on rajoute au cas par cas (ici : jamais)
+  cap_drop: !override [ALL]
+  # !override : les listes se CUMULENT entre fichiers compose, et compose.prod.yml met deja
+  # no-new-privileges -> "security_opt items at 0 and 1 are equal" sur le combo prod + hardened
+  security_opt: !override
+    # menace : elevation via un binaire setuid/setgid (sudo, passwd, binaire vulnerable) : avec ce flag
+    # le noyau ignore le bit s (teste : euid=0 sans, Permission denied avec)
+    - no-new-privileges:true
+# + par service : deploy.resources.limits (cpus, memory, pids)
+#   menace : un conteneur qui part en vrille (fuite memoire, boucle, fork bomb) affame tout l'hote.
+#   pids : pas de pids_limit ici, compose refuse pids_limit ET limits.pids differents sur le meme service
+
+services:
+  # ---------- proxy de socket : le SEUL a voir docker.sock ----------
+  # Avant : traefik montait /var/run/docker.sock = acces a l'API docker = root sur l'hote
+  # (docker run -v /:/host --privileged ... depuis traefik compromis). Meme en :ro : le :ro protege
+  # le FICHIER socket, pas les appels API qui passent dedans.
+  # Maintenant : haproxy filtre l'API, seuls les GET sur /containers, /events, /version passent,
+  # tout POST/DELETE est refuse (403). Traefik compromis peut lister les conteneurs, rien de plus.
+  socket-proxy:
+    <<: *hardening
+    image: tecnativa/docker-socket-proxy:0.3.0
+    restart: unless-stopped
+    environment:
+      CONTAINERS: 1     # GET /containers/json + inspect : ce que lit le provider docker de traefik
+      EVENTS: 1         # GET /events : traefik reagit aux start/stop/health_status
+      VERSION: 1
+      PING: 1
+      POST: 0           # lecture seule : aucun create/start/exec/kill possible
+      LOG_LEVEL: warning
+    # pas root : la socket est root:root 660 dans la VM docker desktop, le groupe 0 suffit pour y ecrire.
+    # Etre dans le groupe root ne donne aucune capability, c'est juste un gid pour les droits fichiers.
+    user: "65534:65534"
+    group_add: ["0"]
+    # l'entrypoint de l'image ecrit haproxy.cfg dans /usr/local/etc/haproxy -> impossible en read_only.
+    # On genere la conf dans /tmp (tmpfs) et on lance haproxy dessus. Le template reste celui de l'image.
+    entrypoint:
+      - /bin/sh
+      - -c
+      - |
+        sed 's/$${BIND_CONFIG}/:2375/g' /usr/local/etc/haproxy/haproxy.cfg.template > /tmp/haproxy.cfg
+        exec haproxy -W -db -f /tmp/haproxy.cfg
+    tmpfs:
+      - /tmp:size=1m
+      # pidfile haproxy : tmpfs a nobody, sinon il est root:root 755 -> "Cannot create pidfile"
+      - /run:uid=65534,gid=65534,size=1m
+    volumes:
+      - /var/run/docker.sock:/var/run/docker.sock:ro
+    networks:
+      - socket
+    labels:
+      # exception assumee dans audit.sh : c'est son role d'avoir la socket
+      audit.exceptions: "SOCK"
+    healthcheck:
+      test: ["CMD-SHELL", "wget -q -O- http://127.0.0.1:2375/_ping | grep -q OK"]
+      interval: 10s
+      timeout: 3s
+      retries: 3
+      start_period: 5s
+    deploy:
+      resources:
+        limits: { cpus: "0.25", memory: 32M, pids: 20 }
+
+  traefik:
+    <<: *hardening
+    # non-root et AUCUNE capability : docker met net.ipv4.ip_unprivileged_port_start=0 dans le namespace
+    # reseau de chaque conteneur, donc meme nobody peut ecouter sur :80 (teste, cf rapport).
+    # Le NET_BIND_SERVICE du compose.prod.yml du TP04 servait a rien.
+    user: "65534:65534"
+    cap_add: !reset []
+    command:
+      # plus de socket : traefik parle a l'API docker via le proxy, en TCP sur un reseau interne
+      - --providers.docker.endpoint=tcp://socket-proxy:2375
+      - --providers.docker.exposedbydefault=false
+      - --providers.docker.network=shop_front
+      - --entrypoints.web.address=:80
+      - --ping=true
+      - --accesslog=true
+    volumes: !reset []
+    networks:
+      - front
+      - socket
+    depends_on:
+      socket-proxy:
+        condition: service_healthy
+    deploy:
+      resources:
+        limits: { cpus: "0.50", memory: 128M, pids: 100 }
+
+  api:
+    <<: *hardening
+    # node est deja l'USER de l'image (uid 1000), on le force quand meme : si quelqu'un repousse une image
+    # sans USER, le conteneur demarre pas en root en silence
+    user: "1000:1000"
+    tmpfs:
+      - /tmp:size=16m
+    deploy:
+      resources:
+        limits: { cpus: "0.50", memory: 256M, pids: 100 }
+        reservations: { memory: 64M }
+
+  worker:
+    <<: *hardening
+    user: "10001:10001"
+    tmpfs:
+      - /tmp:size=16m
+    deploy:
+      resources:
+        limits: { cpus: "0.50", memory: 256M, pids: 100 }
+
+  db:
+    <<: *hardening
+    # Lance en root, l'entrypoint postgres fait chown/chmod du PGDATA puis su-exec postgres. Par essai/erreur
+    # (cap_drop ALL puis ajout une par une, voir rapport) il lui faut : CHOWN, DAC_OVERRIDE, FOWNER, SETUID, SETGID.
+    # Plutot que de rendre ces 5 caps, on demarre DIRECTEMENT en postgres (uid 70 de l'image alpine) :
+    # le volume pgdata est deja a lui, l'entrypoint saute la partie root -> 0 capability.
+    # Attention : sur un volume NEUF cree par un autre uid ca marcherait pas (cf rapport, daemon userns).
+    user: "70:70"
+    tmpfs:
+      # socket unix + lock de postgres, et son /tmp. uid/gid sinon le tmpfs est root:root 755
+      - /var/run/postgresql:uid=70,gid=70,mode=0775,size=1m
+      - /tmp:uid=70,gid=70,mode=1777,size=64m
+    shm_size: 128m
+    deploy:
+      resources:
+        limits: { cpus: "1.0", memory: 512M, pids: 200 }
+
+  redis:
+    <<: *hardening
+    # menace : redis a un historique de RCE (CONFIG SET dir + SAVE pour ecrire une cle ssh / un cron) :
+    # en uid 999 sur un rootfs read-only, il peut ecrire que dans /data
+    user: "999:1000"
+    tmpfs:
+      - /tmp:size=8m
+    deploy:
+      resources:
+        limits: { cpus: "0.25", memory: 128M, pids: 50 }
+
+networks:
+  # le reseau du proxy de socket : sans passerelle, joignable uniquement par traefik
+  socket:
+    internal: true

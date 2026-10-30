@@ -1,0 +1,9 @@
+CONTENEUR                      USER   PRIV   CAPS   RO     MEM    PIDS   NNP    SOCK    DETAIL
+shop-api-2                     ok     ok     ok     ok     ok     X      ok     ok      pids illimite
+shop-api-1                     ok     ok     ok     ok     ok     X      ok     ok      pids illimite
+shop-redis-1                   X      ok     X      X      ok     X      ok     ok      user=root(defaut),capdrop=aucun,rootfs rw,pids illimite
+shop-worker-1                  ok     ok     ok     ok     ok     X      ok     ok      pids illimite
+shop-db-1                      X      ok     X      X      ok     X      ok     ok      user=root(defaut),capdrop=aucun,rootfs rw,pids illimite
+shop-traefik-1                 X      ok     ok     ok     ok     X      ok     X       user=root(defaut),capadd=CAP_NET_BIND_SERVICE,pids illimite,socket docker montee
+
+14 ecart(s)

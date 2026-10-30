@@ -1,0 +1,8 @@
+# Bonus B1 : profil seccomp dedie a l'API (liste blanche de 80 syscalls au lieu des ~300 du profil docker)
+#   docker compose -f $T4/compose.yml [-f $T4/compose.prod.yml] -f compose.hardened.yml -f compose.seccomp.yml up -d --wait
+# Le chemin est relatif au dossier du PROJET (= celui du TP04, 1er -f), d'ou le ../../../
+services:
+  api:
+    security_opt: !override
+      - no-new-privileges:true
+      - seccomp=../../../30-10/tp08-hardening/solution/seccomp/shopapi.json

@@ -37,7 +37,7 @@ if [ "$cache" = "HIT" ]; then ok "X-Cache: HIT au 2e appel"; else ko "X-Cache: '
 
 echo "== 3. creation d'une commande"
 code=$(call -o /dev/null -w '%{http_code}' -X POST -H 'Content-Type: application/json' \
-  -d '{"productId":1,"quantity":2}' "${BASE_URL}/orders")
+  -d '{"productId":1,"quantity":2}' "${BASE_URL}/orders" || true)   # meme raison qu'au 2.
 if [ "$code" = "201" ]; then ok "POST /orders -> 201"; else ko "POST /orders -> ${code}"; fi
 
 echo "== 4. le worker passe la commande en confirmed"

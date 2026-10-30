@@ -1,0 +1,5 @@
+# scripts et Makefile lances dans des conteneurs / sous linux : toujours en LF
+*.sh      text eol=lf
+Makefile  text eol=lf
+*.yml     text eol=lf
+*.conf    text eol=lf

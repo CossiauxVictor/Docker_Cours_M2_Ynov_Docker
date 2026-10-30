@@ -1,0 +1,10 @@
+CONTENEUR                      USER   PRIV   CAPS   RO     MEM    PIDS   NNP    SOCK    DETAIL
+shop-worker-1                  ok     ok     ok     ok     ok     ok     ok     ok      
+shop-api-2                     ok     ok     ok     ok     ok     ok     ok     ok      
+shop-api-3                     ok     ok     ok     ok     ok     ok     ok     ok      
+shop-socket-proxy-1            ok     ok     ok     ok     ok     ok     ok     e       socket docker montee
+shop-traefik-1                 ok     ok     ok     ok     ok     ok     ok     ok      
+shop-db-1                      ok     ok     ok     ok     ok     ok     ok     ok      
+shop-redis-1                   ok     ok     ok     ok     ok     ok     ok     ok      
+
+aucun ecart

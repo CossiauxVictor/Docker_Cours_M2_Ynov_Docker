@@ -1,0 +1,46 @@
+# Profil AppArmor dedie a l'API Shop SAS (bonus B4) - PAS TESTE : la VM Docker Desktop n'a pas AppArmor
+# (docker info -> SecurityOptions = seccomp seulement). A charger sur un hote Ubuntu/Debian :
+#
+#   sudo apparmor_parser -r -W apparmor/shop-api
+#   docker run --security-opt apparmor=shop-api ...         (compose : security_opt: [apparmor=shop-api])
+#
+# Difference avec docker-default : docker-default interdit surtout l'acces a /proc/sys, /sys, mount, ptrace...
+# mais laisse ecrire PARTOUT dans le conteneur. Ici on n'autorise l'ecriture que dans /tmp :
+# meme si le rootfs n'est pas read_only (oubli dans un compose), un webshell ne peut pas etre depose.
+#include <tunables/global>
+
+profile shop-api flags=(attach_disconnected,mediate_deleted) {
+  #include <abstractions/base>
+
+  network inet tcp,
+  network inet6 tcp,
+  network inet udp,      # DNS
+  network inet6 udp,
+  network unix stream,
+
+  # lecture seule sur tout le systeme de fichiers du conteneur
+  /** r,
+  # binaires autorises a s'executer (node + le sh du wrapper qui lit le secret)
+  /usr/local/bin/node ix,
+  /bin/busybox ix,
+  /bin/sh ix,
+  /bin/cat ix,
+
+  # seule zone en ecriture
+  /tmp/** rw,
+  /tmp/ r,
+
+  # secret en lecture
+  /run/secrets/** r,
+
+  # comme docker-default : pas de /proc/sys, /sys, ni de mount / ptrace
+  deny /proc/sys/** wl,
+  deny /sys/** wl,
+  deny @{PROC}/sysrq-trigger rwklx,
+  deny @{PROC}/kcore rwklx,
+  deny mount,
+  deny umount,
+  deny ptrace,
+  # pas de "deny /** w" : dans AppArmor un deny gagne TOUJOURS sur un allow, ca bloquerait aussi /tmp.
+  # Pas besoin de toute facon, ce qui n'est pas autorise est refuse.
+}
