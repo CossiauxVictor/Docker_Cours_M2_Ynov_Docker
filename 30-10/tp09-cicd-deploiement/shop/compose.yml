@@ -40,9 +40,16 @@ x-app: &app
     - /bin/sh
     - -c
     # $$ = un $ litteral pour compose, c'est le shell du conteneur qui interprete
+    # TP09 "drain" : au SIGTERM on relaie a l'appli, et une fois qu'elle est arretee le conteneur reste
+    # en vie DRAIN_SECONDS : le port est ferme mais l'IP existe encore -> le noyau repond RST tout de suite,
+    # traefik bascule (retry) et son healthcheck actif sort le replica AVANT que l'IP disparaisse.
+    # Sans ca : IP supprimee -> connexions dans le vide -> 504/timeouts cote client (mesures dans le RAPPORT).
     - |
       export DATABASE_URL="postgres://$${DB_USER}:$$(cat /run/secrets/db_password)@$${DB_HOST}:5432/$${DB_NAME}"
-      exec "$$@"
+      "$$@" &
+      pid=$$!
+      trap 'kill -TERM $$pid; wait $$pid; rc=$$?; sleep "$${DRAIN_SECONDS:-3}"; exit $$rc' TERM INT
+      wait $$pid
     - app
 
 services:
@@ -60,8 +67,15 @@ services:
       - --ping=true
       - --accesslog=true
       # TP09 zero interruption : un backend qui vient de disparaitre (IP supprimee) fait attendre la connexion
-      # jusqu'au dialTimeout (30s par defaut !). 1s puis le middleware retry passe a l'autre replica
-      - --serverstransport.forwardingtimeouts.dialtimeout=1s
+      # jusqu'au dialTimeout (30s par defaut !). 250ms puis le middleware retry passe a l'autre replica
+      # (1s au 1er essai : encore 30 timeouts cote client, 2 tentatives de suite sur le mort = 2s, cf RAPPORT)
+      - --serverstransport.forwardingtimeouts.dialtimeout=250ms
+      # Traefik applique les changements de conteneurs au plus toutes les 2s (defaut) : pendant ce temps il route
+      # encore vers l'IP du replica supprime. 500ms = fenetre 4x plus courte (cf RAPPORT, mesures)
+      - --providers.providersthrottleduration=500ms
+      # pas de keep-alive traefik -> api : sinon traefik peut envoyer une requete sur une connexion que node est
+      # en train de fermer (server.close au SIGTERM) -> 502 non rejouable. Cout : 1 connexion TCP locale par requete
+      - --serverstransport.maxidleconnsperhost=-1
     ports:
       - "80:80"
     volumes:
@@ -103,7 +117,9 @@ services:
       - traefik.http.services.api.loadbalancer.server.port=3000
       # healthcheck cote traefik : un replica qui repond plus est sorti du load balancer
       - traefik.http.services.api.loadbalancer.healthcheck.path=/health
-      - traefik.http.services.api.loadbalancer.healthcheck.interval=5s
+      # TP09 : 1s (au lieu de 5s) pour sortir un replica en cours d'arret pendant son drain de 3s
+      - traefik.http.services.api.loadbalancer.healthcheck.interval=1s
+      - traefik.http.services.api.loadbalancer.healthcheck.timeout=500ms
       # TP09 : retry = si le replica choisi refuse la connexion (SIGTERM en cours) ou a disparu,
       # traefik rejoue la requete sur un autre replica au lieu de renvoyer 502 / timeout au client
       - traefik.http.middlewares.api-retry.retry.attempts=3

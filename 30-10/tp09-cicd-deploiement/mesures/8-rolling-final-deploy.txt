@@ -1,0 +1,18 @@
+[18:18:55] 1. verification des signatures (localhost:5000/*:sha-dca8429)
+[18:18:58]    signatures OK  shopapi@4ea6b7f722f8  shop-worker@fddc25e8b53b
+[18:18:58] 2. pull des images
+ worker Skipped - Image is already present locally 
+ api Skipped - Image is already present locally 
+[18:18:59] 3. rolling update api : 2 replica(s) a remplacer, un par un
+[18:19:02]    + shop-api-20 demarre, attente healthy...
+[18:19:08]    + shop-api-20 healthy
+[18:19:10]    - arret propre de shop-api-19 (SIGTERM, 15s max)
+[18:19:17]    + shop-api-21 demarre, attente healthy...
+[18:19:22]    + shop-api-21 healthy
+[18:19:24]    - arret propre de shop-api-18 (SIGTERM, 15s max)
+[18:19:29] 4. worker
+[18:19:38]    worker healthy
+[18:19:38] OK : api et worker en sha-dca8429 (preprod) en 43 s
+shop-worker-1  localhost:5000/shop-worker:sha-dca8429  Up 6 seconds (healthy)
+shop-api-21  localhost:5000/shopapi:sha-dca8429  Up 22 seconds (healthy)
+shop-api-20  localhost:5000/shopapi:sha-dca8429  Up 36 seconds (healthy)

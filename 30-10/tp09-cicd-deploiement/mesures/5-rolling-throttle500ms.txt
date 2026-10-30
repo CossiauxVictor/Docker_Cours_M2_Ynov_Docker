@@ -1,0 +1,63 @@
+mesure : 100 req/s sur http://traefik/health (Host: api.localhost) pendant 60s, reseau shop_front
+t=  1s ok= 96  version=?
+t=  2s ok= 98  version=sha-c8c6199
+t=  3s ok= 99  version=sha-c8c6199
+t=  4s ok= 99  version=sha-c8c6199
+t=  5s ok= 99  version=sha-c8c6199
+t=  6s ok= 99  version=sha-c8c6199
+t=  7s ok= 97  version=sha-c8c6199
+t=  8s ok= 94  version=sha-c8c6199
+t=  9s ok= 97  version=sha-c8c6199
+t= 10s ok= 99  version=sha-c8c6199
+t= 11s ok= 99  version=sha-c8c6199
+t= 12s ok= 97  version=sha-c8c6199
+t= 13s ok= 98  version=sha-c8c6199
+t= 14s ok= 98  version=sha-c8c6199
+t= 15s ok= 99  version=sha-c8c6199
+t= 16s ok= 97  version=sha-c8c6199
+t= 17s ok= 99  version=sha-c8c6199
+t= 18s ok= 99  version=sha-c8c6199
+t= 19s ok= 96  version=sha-dca8429
+t= 20s ok= 97  version=sha-dca8429
+t= 21s ok= 80  version=sha-dca8429
+t= 22s ok=113 KO=4 {"504":4}  version=sha-c8c6199
+t= 23s ok= 98 KO=1 {"504":1}  version=sha-dca8429
+t= 24s ok= 98  version=sha-dca8429
+t= 25s ok= 98  version=sha-c8c6199
+t= 26s ok= 98  version=sha-dca8429
+t= 27s ok= 99  version=sha-c8c6199
+t= 28s ok= 99  version=sha-dca8429
+t= 29s ok= 99  version=sha-c8c6199
+t= 30s ok= 98  version=sha-c8c6199
+t= 31s ok= 99  version=sha-c8c6199
+t= 32s ok= 82  version=sha-dca8429
+t= 33s ok=111 KO=5 {"504":5}  version=sha-dca8429
+t= 34s ok= 98  version=sha-dca8429
+t= 35s ok= 99  version=sha-dca8429
+t= 36s ok= 98  version=sha-dca8429
+t= 37s ok= 97  version=sha-dca8429
+t= 38s ok= 97  version=sha-dca8429
+t= 39s ok=101  version=sha-dca8429
+t= 40s ok= 99  version=sha-dca8429
+t= 41s ok= 98  version=sha-dca8429
+t= 42s ok=100  version=sha-dca8429
+t= 43s ok= 99  version=sha-dca8429
+t= 44s ok= 98  version=sha-dca8429
+t= 45s ok= 98  version=sha-dca8429
+t= 46s ok= 98  version=sha-dca8429
+t= 47s ok= 98  version=sha-dca8429
+t= 48s ok= 98  version=sha-dca8429
+t= 49s ok= 97  version=sha-dca8429
+t= 50s ok=100  version=sha-dca8429
+t= 51s ok= 99  version=sha-dca8429
+t= 52s ok= 99  version=sha-dca8429
+t= 53s ok= 98  version=sha-dca8429
+t= 54s ok= 99  version=sha-dca8429
+t= 55s ok=100  version=sha-dca8429
+t= 56s ok= 99  version=sha-dca8429
+t= 57s ok= 99  version=sha-dca8429
+t= 58s ok= 99  version=sha-dca8429
+t= 59s ok= 99  version=sha-dca8429
+t= 60s ok= 99  version=sha-dca8429
+
+TOTAL 5901 requetes : 5891 OK, 10 ECHECS {"504":10}

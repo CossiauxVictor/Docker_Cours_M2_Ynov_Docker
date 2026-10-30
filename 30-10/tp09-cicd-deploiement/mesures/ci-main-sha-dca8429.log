@@ -1,0 +1,74 @@
+
+==== [main] 1. hadolint
+  shopapi : OK
+  shop-worker : OK
+
+==== [main] 2. docker compose config (dev + prod)
+  dev : OK
+time="2026-10-30T17:03:15Z" level=warning msg="The \"API_DIGEST\" variable is not set. Defaulting to a blank string."
+time="2026-10-30T17:03:15Z" level=warning msg="The \"WORKER_DIGEST\" variable is not set. Defaulting to a blank string."
+  prod : OK
+
+==== [main] 3. tests (docker build --target test)
+  shopapi : tests OK
+  shop-worker : tests OK
+
+==== [main] 4. builder buildx multi-arch (linux/amd64,linux/arm64)
+  builder ci-dca8429-1 pret
+
+==== [main] 5. build + push shopapi (sha-dca8429)
+  pousse : registry.local:5000/shopapi@sha256:4ea6b7f722f8f8e72ed10344078998d6618e499ac5a0a790892c672f239351df
+
+==== [main] 5. build + push shop-worker (sha-dca8429)
+  pousse : registry.local:5000/shop-worker@sha256:fddc25e8b53b50dbb93ac95301bf3f2a5bfa38041de8cadf72f9975f59dce0b0
+
+==== [main] 6. release gate shopapi
+  ==> Porte de release pour localhost:5000/shopapi@sha256:4ea6b7f722f8f8e72ed10344078998d6618e499ac5a0a790892c672f239351df
+  ==> 1/5 labels OCI
+    [OK] org.opencontainers.image.version = sha-dca8429
+    [OK] org.opencontainers.image.revision = dca8429992c85994806433b156fb81b699619474
+    [OK] org.opencontainers.image.source = https://github.com/CossiauxVictor/Docker_Cours_M2_Ynov_Docker
+  ==> 2/5 utilisateur
+    [OK] USER=node
+  ==> 3/5 HEALTHCHECK
+    [OK] HEALTHCHECK ["CMD","node","-e","fetch('http://127.0.0.1:'+(process.env.PORT||3000)+'/health'
+  ==> 4/5 vulnerabilites HIGH/CRITICAL corrigeables (trivy)
+    [OK] 0 CVE HIGH/CRITICAL corrigeable
+  ==> 5/5 secrets
+    [OK] trivy : aucun secret dans les fichiers de l'image
+    [OK] aucun secret dans les ENV
+    [OK] aucun identifiant dans l'history
+  
+  ACCEPTE : localhost:5000/shopapi@sha256:4ea6b7f722f8f8e72ed10344078998d6618e499ac5a0a790892c672f239351df respecte la politique Shop SAS.
+  (pas de --push : rien n'est publie)
+
+==== [main] 6. release gate shop-worker
+  ==> Porte de release pour localhost:5000/shop-worker@sha256:fddc25e8b53b50dbb93ac95301bf3f2a5bfa38041de8cadf72f9975f59dce0b0
+  ==> 1/5 labels OCI
+    [OK] org.opencontainers.image.version = sha-dca8429
+    [OK] org.opencontainers.image.revision = dca8429992c85994806433b156fb81b699619474
+    [OK] org.opencontainers.image.source = https://github.com/CossiauxVictor/Docker_Cours_M2_Ynov_Docker
+  ==> 2/5 utilisateur
+    [OK] USER=10001:10001
+  ==> 3/5 HEALTHCHECK
+    [OK] HEALTHCHECK ["CMD","python","-c","import urllib.request,sys; urllib.request.urlopen('http://
+  ==> 4/5 vulnerabilites HIGH/CRITICAL corrigeables (trivy)
+    [OK] 0 CVE HIGH/CRITICAL corrigeable
+  ==> 5/5 secrets
+    [OK] trivy : aucun secret dans les fichiers de l'image
+    [OK] aucun secret dans les ENV
+    [OK] aucun identifiant dans l'history
+  
+  ACCEPTE : localhost:5000/shop-worker@sha256:fddc25e8b53b50dbb93ac95301bf3f2a5bfa38041de8cadf72f9975f59dce0b0 respecte la politique Shop SAS.
+  (pas de --push : rien n'est publie)
+
+==== [main] 7. signature cosign shopapi
+  signe et verifie : registry.local:5000/shopapi@sha256:4ea6b7f722f8f8e72ed10344078998d6618e499ac5a0a790892c672f239351df
+
+==== [main] 7. signature cosign shop-worker
+  signe et verifie : registry.local:5000/shop-worker@sha256:fddc25e8b53b50dbb93ac95301bf3f2a5bfa38041de8cadf72f9975f59dce0b0
+
+PIPELINE main OK en 245 s - version sha-dca8429
+  shopapi  localhost:5000/shopapi:sha-dca8429  sha256:4ea6b7f722f8f8e72ed10344078998d6618e499ac5a0a790892c672f239351df
+  shop-worker  localhost:5000/shop-worker:sha-dca8429  sha256:fddc25e8b53b50dbb93ac95301bf3f2a5bfa38041de8cadf72f9975f59dce0b0
+deploiement preprod : VERSION=sha-dca8429 ./deploy/rolling-update.sh   (lance depuis l'hote, voir RAPPORT)

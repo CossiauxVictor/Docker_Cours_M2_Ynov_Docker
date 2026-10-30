@@ -1,0 +1,230 @@
+# Pipeline Shop SAS (TP09) - prevu pour le depot "shop" seul (ce dossier a la racine du depot)
+#
+#   pull request : hadolint, compose config, tests (cible test), build sans push
+#   push main    : + push sha-<sha> sur GHCR (multi-arch, provenance, sbom), trivy bloquant,
+#                  signature cosign keyless (OIDC GitHub), deploiement preprod
+#   tag v*       : + tags semver, verification de signature, deploiement prod avec approbation (environment)
+#
+# PAS EXECUTE pour de vrai (pas de depot GitHub a moi avec les droits) : valide avec actionlint, et les memes
+# etapes sont rejouees en local par ci-local.sh (voir RAPPORT).
+name: ci
+
+on:
+  pull_request:
+  push:
+    branches: [main]
+    tags: ["v*"]
+
+permissions:
+  contents: read
+
+concurrency:
+  group: ci-${{ github.ref }}
+  cancel-in-progress: ${{ github.event_name == 'pull_request' }}
+
+env:
+  REGISTRY: ghcr.io
+  IMAGE_PREFIX: ghcr.io/${{ github.repository_owner }}
+
+jobs:
+  # ---------- verifications rapides ----------
+  lint:
+    runs-on: ubuntu-24.04
+    strategy:
+      matrix:
+        app: [shopapi, shop-worker]
+    steps:
+      - uses: actions/checkout@v4
+      - uses: hadolint/hadolint-action@v3.1.0
+        with:
+          dockerfile: apps/${{ matrix.app }}/Dockerfile
+      - name: docker compose config
+        run: |
+          docker compose -f compose.yml config -q
+          REGISTRY=ghcr.io/x VERSION=ci docker compose -f compose.yml -f compose.prod.yml config -q
+
+  test:
+    runs-on: ubuntu-24.04
+    needs: lint
+    strategy:
+      matrix:
+        app: [shopapi, shop-worker]
+    steps:
+      - uses: actions/checkout@v4
+      - uses: docker/setup-buildx-action@v3
+      - name: pip.conf (secret de build du worker)
+        if: matrix.app == 'shop-worker'
+        run: printf '%s' "$PIP_CONF" > pip.conf
+        env:
+          PIP_CONF: ${{ secrets.PIP_CONF }}
+      - name: tests (cible test du Dockerfile)
+        uses: docker/build-push-action@v6
+        with:
+          context: apps/${{ matrix.app }}
+          target: test
+          outputs: type=cacheonly
+          secret-files: ${{ matrix.app == 'shop-worker' && 'pipconf=pip.conf' || '' }}
+          cache-from: type=gha,scope=${{ matrix.app }}
+          cache-to: type=gha,scope=${{ matrix.app }},mode=max
+
+  # ---------- build (+ push hors PR) ----------
+  build:
+    runs-on: ubuntu-24.04
+    needs: test
+    strategy:
+      matrix:
+        app: [shopapi, shop-worker]
+    permissions:
+      contents: read
+      packages: write          # push GHCR
+      id-token: write          # OIDC pour cosign keyless
+    outputs:
+      shopapi-digest: ${{ steps.out.outputs.shopapi }}
+      shop-worker-digest: ${{ steps.out.outputs.shop-worker }}
+    steps:
+      - uses: actions/checkout@v4
+      - uses: docker/setup-qemu-action@v3
+      - uses: docker/setup-buildx-action@v3
+      - name: pip.conf
+        if: matrix.app == 'shop-worker'
+        run: printf '%s' "$PIP_CONF" > pip.conf
+        env:
+          PIP_CONF: ${{ secrets.PIP_CONF }}
+
+      # tags + labels OCI selon la politique du TP03 : sha-<sha> toujours, semver sur tag, jamais latest
+      - id: meta
+        uses: docker/metadata-action@v5
+        with:
+          images: ${{ env.IMAGE_PREFIX }}/${{ matrix.app }}
+          flavor: latest=false
+          tags: |
+            type=sha,prefix=sha-,format=short
+            type=semver,pattern={{version}}
+            type=semver,pattern={{major}}.{{minor}}
+            type=semver,pattern={{major}}
+            type=ref,event=pr,prefix=pr-
+
+      - if: github.event_name != 'pull_request'
+        uses: docker/login-action@v3
+        with:
+          registry: ${{ env.REGISTRY }}
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+
+      - id: build
+        uses: docker/build-push-action@v6
+        with:
+          context: apps/${{ matrix.app }}
+          platforms: ${{ github.event_name == 'pull_request' && 'linux/amd64' || 'linux/amd64,linux/arm64' }}
+          push: ${{ github.event_name != 'pull_request' }}
+          tags: ${{ steps.meta.outputs.tags }}
+          labels: ${{ steps.meta.outputs.labels }}
+          build-args: |
+            APP_VERSION=${{ steps.meta.outputs.version }}
+            VERSION=${{ steps.meta.outputs.version }}
+            GIT_SHA=${{ github.sha }}
+          secret-files: ${{ matrix.app == 'shop-worker' && 'pipconf=pip.conf' || '' }}
+          provenance: mode=max
+          sbom: true
+          cache-from: type=gha,scope=${{ matrix.app }}
+          cache-to: type=gha,scope=${{ matrix.app }},mode=max
+
+      # gate bloquante : 0 HIGH/CRITICAL corrigeable. Echec = pas de signature = pas deployable.
+      - if: github.event_name != 'pull_request'
+        uses: aquasecurity/trivy-action@0.28.0
+        with:
+          image-ref: ${{ env.IMAGE_PREFIX }}/${{ matrix.app }}@${{ steps.build.outputs.digest }}
+          severity: HIGH,CRITICAL
+          ignore-unfixed: true
+          exit-code: "1"
+
+      # signature keyless : certificat ephemere Fulcio lie a l'identite du workflow, trace dans Rekor
+      - if: github.event_name != 'pull_request'
+        uses: sigstore/cosign-installer@v3
+      - if: github.event_name != 'pull_request'
+        run: cosign sign --yes "$IMAGE@$DIGEST"
+        env:
+          IMAGE: ${{ env.IMAGE_PREFIX }}/${{ matrix.app }}
+          DIGEST: ${{ steps.build.outputs.digest }}
+
+      - id: out
+        run: echo "${{ matrix.app }}=${{ steps.build.outputs.digest }}" >> "$GITHUB_OUTPUT"
+
+  # ---------- tests d'integration : la stack complete demarre et le smoke test passe (bonus B4) ----------
+  integration:
+    runs-on: ubuntu-24.04
+    needs: build
+    if: github.event_name != 'pull_request'
+    steps:
+      - uses: actions/checkout@v4
+      - name: stack prod + smoke test
+        env:
+          REGISTRY: ${{ env.IMAGE_PREFIX }}
+        run: |
+          VERSION="sha-${GITHUB_SHA::7}"; export VERSION
+          openssl rand -hex 24 > secrets/db_password.txt
+          C="docker compose -f compose.yml -f compose.prod.yml"
+          $C up -d --wait
+          COMPOSE="$C" ./smoke-test.sh
+      - if: always()
+        run: docker compose -f compose.yml -f compose.prod.yml down -v
+
+  # ---------- deploiements ----------
+  deploy-preprod:
+    runs-on: ubuntu-24.04
+    needs: integration
+    if: github.ref == 'refs/heads/main'
+    environment: preprod
+    steps:
+      - uses: actions/checkout@v4
+      - uses: sigstore/cosign-installer@v3
+      - name: cle SSH + docker context
+        run: |
+          install -m 700 -d ~/.ssh
+          printf '%s\n' "$SSH_KEY" > ~/.ssh/id_ed25519 && chmod 600 ~/.ssh/id_ed25519
+          printf '%s\n' "$SSH_KNOWN_HOSTS" > ~/.ssh/known_hosts
+          docker context create preprod --docker "host=ssh://deploy@${{ vars.PREPROD_HOST }}"
+        env:
+          SSH_KEY: ${{ secrets.DEPLOY_SSH_KEY }}
+          SSH_KNOWN_HOSTS: ${{ vars.PREPROD_KNOWN_HOSTS }}
+      - name: rolling update (verifie la signature puis deploie le digest)
+        env:
+          DOCKER_CONTEXT: preprod
+          # a faire : rolling-update.sh verifie avec ci/cosign.pub (cle) ; en keyless il faut lui passer
+          # --certificate-identity / --certificate-oidc-issuer comme dans deploy-prod
+          COSIGN_IDENTITY: https://github.com/${{ github.repository }}/.github/workflows/ci.yml@refs/heads/main
+        run: VERSION="sha-${GITHUB_SHA::7}" ./deploy/rolling-update.sh
+
+  deploy-prod:
+    runs-on: ubuntu-24.04
+    needs: integration
+    if: startsWith(github.ref, 'refs/tags/v')
+    # "production" a des reviewers obligatoires dans les settings du depot : le job attend l'approbation
+    environment:
+      name: production
+      url: https://shop.example.com
+    steps:
+      - uses: actions/checkout@v4
+      - uses: sigstore/cosign-installer@v3
+      - name: verification de la signature AVANT tout
+        run: |
+          for app in shopapi shop-worker; do
+            cosign verify "$IMAGE_PREFIX/$app:${GITHUB_REF_NAME#v}" \
+              --certificate-identity-regexp "^https://github.com/${GITHUB_REPOSITORY}/.github/workflows/ci.yml@refs/tags/v" \
+              --certificate-oidc-issuer https://token.actions.githubusercontent.com
+          done
+      - name: cle SSH + docker context
+        run: |
+          install -m 700 -d ~/.ssh
+          printf '%s\n' "$SSH_KEY" > ~/.ssh/id_ed25519 && chmod 600 ~/.ssh/id_ed25519
+          printf '%s\n' "$SSH_KNOWN_HOSTS" > ~/.ssh/known_hosts
+          docker context create prod --docker "host=ssh://deploy@${{ vars.PROD_HOST }}"
+        env:
+          SSH_KEY: ${{ secrets.DEPLOY_SSH_KEY }}
+          SSH_KNOWN_HOSTS: ${{ vars.PROD_KNOWN_HOSTS }}
+      - name: rolling update prod
+        env:
+          DOCKER_CONTEXT: prod
+          TARGET_ENV: prod
+          APPROVE: "yes"     # l'approbation a deja eu lieu via l'environment
+        run: VERSION="${GITHUB_REF_NAME#v}" ./deploy/rolling-update.sh

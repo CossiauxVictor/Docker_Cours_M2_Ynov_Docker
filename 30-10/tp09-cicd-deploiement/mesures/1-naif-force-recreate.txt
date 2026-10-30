@@ -1,0 +1,43 @@
+mesure : 100 req/s sur http://traefik/health (Host: api.localhost) pendant 40s, reseau shop_front
+t=  1s ok= 96  version=?
+t=  2s ok= 99  version=sha-c8c6199
+t=  3s ok= 99  version=sha-c8c6199
+t=  4s ok= 98  version=sha-c8c6199
+t=  5s ok=100  version=sha-c8c6199
+t=  6s ok= 98  version=sha-c8c6199
+t=  7s ok= 99  version=sha-c8c6199
+t=  8s ok= 95 KO=3 {"502":3}  version=sha-c8c6199
+t=  9s ok= 46 KO=6 {"502":6}  version=HTTP 502
+t= 10s ok=  3 KO=1 {"502":1}  version=sha-c8c6199
+t= 11s ok=125 KO=108 {"502":63,"timeout":45}  version=HTTP 502
+t= 12s ok= 94 KO=7 {"502":2,"timeout":5}  version=sha-c8c6199
+t= 13s ok= 98  version=sha-c8c6199
+t= 14s ok= 99  version=sha-c8c6199
+t= 15s ok= 36 KO=8 {"502":8}  version=sha-c8c6199
+t= 16s ok=  0  version=sha-c8c6199
+t= 17s ok=  0 KO=245 {"404":22,"502":173,"timeout":50}  version=HTTP 502
+t= 18s ok=  0 KO=101 {"404":97,"502":4}  version=HTTP 502
+t= 19s ok=  0 KO=99 {"404":99}  version=HTTP 404
+t= 20s ok=  0 KO=98 {"404":98}  version=HTTP 404
+t= 21s ok=  0 KO=99 {"404":99}  version=HTTP 404
+t= 22s ok=  0 KO=100 {"404":100}  version=HTTP 404
+t= 23s ok= 73 KO=25 {"404":25}  version=HTTP 404
+t= 24s ok= 97  version=sha-c8c6199
+t= 25s ok=100  version=sha-c8c6199
+t= 26s ok=100  version=sha-c8c6199
+t= 27s ok= 98  version=sha-c8c6199
+t= 28s ok= 99  version=sha-c8c6199
+t= 29s ok= 99  version=sha-c8c6199
+t= 30s ok= 99  version=sha-c8c6199
+t= 31s ok= 99  version=sha-c8c6199
+t= 32s ok= 99  version=sha-c8c6199
+t= 33s ok= 98  version=sha-c8c6199
+t= 34s ok=100  version=sha-c8c6199
+t= 35s ok= 99  version=sha-c8c6199
+t= 36s ok= 98  version=sha-c8c6199
+t= 37s ok=100  version=sha-c8c6199
+t= 38s ok= 99  version=sha-c8c6199
+t= 39s ok= 99  version=sha-c8c6199
+t= 40s ok= 99  version=sha-c8c6199
+
+TOTAL 3940 requetes : 3040 OK, 900 ECHECS {"404":540,"502":260,"timeout":100}

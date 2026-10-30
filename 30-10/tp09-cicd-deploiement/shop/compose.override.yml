@@ -9,8 +9,15 @@ services:
       - --ping=true
       - --accesslog=true
       # TP09 zero interruption : un backend qui vient de disparaitre (IP supprimee) fait attendre la connexion
-      # jusqu'au dialTimeout (30s par defaut !). 1s puis le middleware retry passe a l'autre replica
-      - --serverstransport.forwardingtimeouts.dialtimeout=1s
+      # jusqu'au dialTimeout (30s par defaut !). 250ms puis le middleware retry passe a l'autre replica
+      # (1s au 1er essai : encore 30 timeouts cote client, 2 tentatives de suite sur le mort = 2s, cf RAPPORT)
+      - --serverstransport.forwardingtimeouts.dialtimeout=250ms
+      # Traefik applique les changements de conteneurs au plus toutes les 2s (defaut) : pendant ce temps il route
+      # encore vers l'IP du replica supprime. 500ms = fenetre 4x plus courte (cf RAPPORT, mesures)
+      - --providers.providersthrottleduration=500ms
+      # pas de keep-alive traefik -> api : sinon traefik peut envoyer une requete sur une connexion que node est
+      # en train de fermer (server.close au SIGTERM) -> 502 non rejouable. Cout : 1 connexion TCP locale par requete
+      - --serverstransport.maxidleconnsperhost=-1
       # dashboard sur :8080, uniquement en dev
       - --api.insecure=true
       - --api.dashboard=true

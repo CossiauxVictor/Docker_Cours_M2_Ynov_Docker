@@ -24,7 +24,13 @@ TARGET_ENV="${TARGET_ENV:-preprod}"
 SERVICE=api
 HEALTH_TIMEOUT="${HEALTH_TIMEOUT:-90}"
 export DOCKER_CONFIG="${DEPLOY_DOCKER_CONFIG:-$PWD/deploy/.docker}"
-set -a; [[ -f .env ]] && . ./.env; set +a
+# .env du serveur : seulement pour les variables PAS deja passees en ligne de commande
+# (un "set -a; . ./.env" ecrasait VERSION=... par celle du .env -> le "deploiement" ne changeait rien, vecu)
+if [[ -f .env ]]; then
+  while IFS='=' read -r k v; do
+    [[ "$k" =~ ^[A-Z_][A-Z0-9_]*$ && -z "${!k:-}" ]] && export "$k=$v"
+  done < <(grep -v '^\s*#' .env | tr -d '\r')
+fi
 export VERSION REGISTRY="${REGISTRY:-localhost:5000}"
 REGISTRY_CA="${REGISTRY_CA:-../../../26-10/tp03-registry-supply-chain/starter/registry/certs/ca.crt}"
 COMPOSE=(docker compose -f compose.yml -f compose.prod.yml)
