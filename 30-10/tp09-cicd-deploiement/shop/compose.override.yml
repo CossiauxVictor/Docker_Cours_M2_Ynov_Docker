@@ -8,6 +8,9 @@ services:
       - --entrypoints.web.address=:80
       - --ping=true
       - --accesslog=true
+      # TP09 zero interruption : un backend qui vient de disparaitre (IP supprimee) fait attendre la connexion
+      # jusqu'au dialTimeout (30s par defaut !). 1s puis le middleware retry passe a l'autre replica
+      - --serverstransport.forwardingtimeouts.dialtimeout=1s
       # dashboard sur :8080, uniquement en dev
       - --api.insecure=true
       - --api.dashboard=true

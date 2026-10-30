@@ -4,3 +4,5 @@ secrets/*
 apps/shop-worker/pip.conf
 # cle privee cosign de la CI (en vrai : secret CI, ou keyless OIDC)
 ci/cosign.key
+# identifiants de pull du serveur de deploiement (compte dev, lecture seule)
+deploy/.docker/

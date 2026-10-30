@@ -22,7 +22,9 @@ services:
     <<: *hardening
     # pas de build en prod : on tire l'image validee par la porte de release du TP03
     build: !reset null
-    image: ${REGISTRY:?REGISTRY doit etre defini}/shopapi:${VERSION:?VERSION doit etre definie}
+    # TP09 : deploy/rolling-update.sh passe API_DIGEST (digest dont la signature a ete verifiee) :
+    # tag + digest -> docker tire le DIGEST, le tag est juste la pour les humains (TAGGING.md du TP03)
+    image: ${REGISTRY:?REGISTRY doit etre defini}/shopapi:${VERSION:?VERSION doit etre definie}${API_DIGEST:+@${API_DIGEST}}
     pull_policy: missing
     environment:
       NODE_ENV: production
@@ -38,7 +40,7 @@ services:
   worker:
     <<: *hardening
     build: !reset null
-    image: ${REGISTRY:?REGISTRY doit etre defini}/shop-worker:${VERSION:?VERSION doit etre definie}
+    image: ${REGISTRY:?REGISTRY doit etre defini}/shop-worker:${VERSION:?VERSION doit etre definie}${WORKER_DIGEST:+@${WORKER_DIGEST}}
     pull_policy: missing
     tmpfs:
       - /tmp:size=16m

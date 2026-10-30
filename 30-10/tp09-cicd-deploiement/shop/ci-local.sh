@@ -6,7 +6,9 @@
 #   ./ci-local.sh tag v1.2.3     -> + tags semver 1.2.3 / 1.2 / 1 (politique TAGGING.md du TP03)
 #
 # Variables :
-#   REGISTRY           registre (defaut localhost:5000 = registre TLS du TP03)
+#   REGISTRY           registre vu par le daemon docker (defaut localhost:5000 = registre TLS du TP03) : pull, deploiement
+#   PUSH_REGISTRY      le MEME registre vu par la CI pour pousser (defaut registry.local:5000 : le nom de son
+#                      certificat et de son http.host, il renvoie ses URL d'upload avec ce nom)
 #   REGISTRY_USER      compte de push (defaut ci)
 #   REGISTRY_PASSWORD  obligatoire pour main/tag (jamais dans git : variable d'env / secret CI)
 #   REGISTRY_CA        CA du registre (defaut : celle generee au TP03)
@@ -27,13 +29,16 @@ if [[ -z "${IN_CI_RUNNER:-}" ]]; then
   prefix=$(git -C "$here" rev-parse --show-prefix)        # chemin du dossier shop dans le depot
   command -v cygpath >/dev/null && top=$(cygpath -w "$top")
   docker build -q -t shop-ci-runner:local -f "$here/ci/Dockerfile.runner" "$here/ci" >/dev/null
-  exec env MSYS_NO_PATHCONV=1 docker run --rm --network host \
+  # add-host registry.local : le registre du TP03 a http.host=https://registry.local:5000, il renvoie
+  # les URL d'upload (Location) avec ce nom -> il doit etre resolu chez tout ce qui POUSSE (cosign, builder)
+  exec env MSYS_NO_PATHCONV=1 docker run --rm --network host --add-host registry.local:127.0.0.1 \
     -v /var/run/docker.sock:/var/run/docker.sock -v "$top:/repo" -w "/repo/$prefix" \
-    -e IN_CI_RUNNER=1 -e REGISTRY -e REGISTRY_USER -e REGISTRY_PASSWORD -e REGISTRY_CA -e COSIGN_PASSWORD -e PLATFORMS \
+    -e IN_CI_RUNNER=1 -e REGISTRY -e PUSH_REGISTRY -e REGISTRY_USER -e REGISTRY_PASSWORD -e REGISTRY_CA -e COSIGN_PASSWORD -e PLATFORMS \
     shop-ci-runner:local bash ./ci-local.sh "$@"
 fi
 
 REGISTRY="${REGISTRY:-localhost:5000}"
+PUSH_REGISTRY="${PUSH_REGISTRY:-registry.local:5000}"
 REGISTRY_USER="${REGISTRY_USER:-ci}"
 REGISTRY_CA="${REGISTRY_CA:-/repo/26-10/tp03-registry-supply-chain/starter/registry/certs/ca.crt}"
 PLATFORMS="${PLATFORMS:-linux/amd64,linux/arm64}"
@@ -100,10 +105,15 @@ DOCKER_CONFIG=$(mktemp -d); export DOCKER_CONFIG
 BUILDER="ci-$SHA-$$"
 cleanup() { docker buildx rm "$BUILDER" >/dev/null 2>&1 || true; rm -rf "$DOCKER_CONFIG"; }
 trap cleanup EXIT
-printf '{"auths":{"%s":{"auth":"%s"}}}\n' "$REGISTRY" "$(printf '%s:%s' "$REGISTRY_USER" "$REGISTRY_PASSWORD" | base64 -w0)" \
+# on pousse sur PUSH_REGISTRY (registry.local:5000) : en poussant sur localhost:5000 le registre redirige
+# les uploads vers registry.local, et buildkit n'y renvoie pas les identifiants -> "unauthorized"
+# (+ REGISTRY pour le docker pull de la gate, fait par le daemon sous le nom localhost:5000)
+auth=$(printf '%s:%s' "$REGISTRY_USER" "$REGISTRY_PASSWORD" | base64 -w0)
+printf '{"auths":{"%s":{"auth":"%s"},"%s":{"auth":"%s"}}}\n' "$PUSH_REGISTRY" "$auth" "$REGISTRY" "$auth" \
   > "$DOCKER_CONFIG/config.json"
+# http = false explicite : sinon buildkit parle HTTP a "localhost" (400 Bad Request sur le port TLS)
 # CA du registre : pour buildkit (fichier copie dans le builder par buildx) et pour cosign (SSL_CERT_FILE, Go)
-printf '[registry."%s"]\n  ca = ["%s"]\n' "$REGISTRY" "$REGISTRY_CA" > "$DOCKER_CONFIG/buildkitd.toml"
+printf '[registry."%s"]\n  ca = ["%s"]\n  http = false\n' "$PUSH_REGISTRY" "$REGISTRY_CA" > "$DOCKER_CONFIG/buildkitd.toml"
 cat /etc/ssl/certs/ca-certificates.crt "$REGISTRY_CA" > "$DOCKER_CONFIG/ca-bundle.pem"
 export SSL_CERT_FILE="$DOCKER_CONFIG/ca-bundle.pem"
 
@@ -111,6 +121,9 @@ step "4. builder buildx multi-arch ($PLATFORMS)"
 # network=host : le builder est un conteneur, sinon localhost:5000 ce serait lui-meme (cf TP02)
 docker buildx create --name "$BUILDER" --driver docker-container --driver-opt network=host \
   --buildkitd-config "$DOCKER_CONFIG/buildkitd.toml" --bootstrap >/dev/null 2>&1
+# pas d'option add-host pour le driver docker-container : on patche le /etc/hosts du conteneur builder
+# (\n devant : le fichier finit sans retour a la ligne, sinon on se colle a "ff02::2 ip6-allrouters")
+docker exec "buildx_buildkit_${BUILDER}0" sh -c 'printf "\n127.0.0.1 registry.local\n" >> /etc/hosts'
 echo "  builder $BUILDER pret"
 
 # tags (equivalent de docker/metadata-action) : sha-<sha> toujours, + semver sur un tag git
@@ -126,7 +139,7 @@ CREATED=$(date -u +%Y-%m-%dT%H:%M:%SZ)
 declare -A DIGEST
 for app in "${APPS[@]}"; do
   step "5. build + push $app (${TAGS[*]})"
-  tag_args=(); for t in "${TAGS[@]}"; do tag_args+=(-t "$REGISTRY/$app:$t"); done
+  tag_args=(); for t in "${TAGS[@]}"; do tag_args+=(-t "$PUSH_REGISTRY/$app:$t"); done
   # shellcheck disable=SC2046
   docker buildx build --builder "$BUILDER" --platform "$PLATFORMS" \
     "${tag_args[@]}" \
@@ -134,12 +147,12 @@ for app in "${APPS[@]}"; do
     --label org.opencontainers.image.created="$CREATED" \
     --label org.opencontainers.image.ref.name="$VERSION" \
     --provenance=mode=max --sbom=true \
-    --cache-from "type=registry,ref=$REGISTRY/$app:buildcache" \
-    --cache-to "type=registry,ref=$REGISTRY/$app:buildcache,mode=max,image-manifest=true,oci-mediatypes=true" \
+    --cache-from "type=registry,ref=$PUSH_REGISTRY/$app:buildcache" \
+    --cache-to "type=registry,ref=$PUSH_REGISTRY/$app:buildcache,mode=max,image-manifest=true,oci-mediatypes=true" \
     --metadata-file "$DOCKER_CONFIG/$app.json" \
     $(secret_args "$app") --push --progress=quiet "apps/$app" >/dev/null
   DIGEST[$app]=$(jq -r '."containerimage.digest"' "$DOCKER_CONFIG/$app.json")
-  echo "  pousse : $REGISTRY/$app@${DIGEST[$app]}"
+  echo "  pousse : $PUSH_REGISTRY/$app@${DIGEST[$app]}"
 done
 
 # ---------- 4. gate (scan bloquant) ----------
@@ -156,10 +169,10 @@ done
 # on signe l'INDEX multi-arch (digest), jamais le tag. La cle est locale faute d'OIDC (keyless : voir RAPPORT)
 for app in "${APPS[@]}"; do
   step "7. signature cosign $app"
-  cosign sign --yes --key ci/cosign.key --tlog-upload=false "$REGISTRY/$app@${DIGEST[$app]}" >/dev/null 2>&1 \
+  cosign sign --yes --key ci/cosign.key --tlog-upload=false "$PUSH_REGISTRY/$app@${DIGEST[$app]}" >/dev/null 2>&1 \
     || die "signature $app"
-  cosign verify --key ci/cosign.pub --insecure-ignore-tlog=true "$REGISTRY/$app@${DIGEST[$app]}" >/dev/null 2>&1 \
-    && echo "  signe et verifie : $REGISTRY/$app@${DIGEST[$app]}"
+  cosign verify --key ci/cosign.pub --insecure-ignore-tlog=true "$PUSH_REGISTRY/$app@${DIGEST[$app]}" >/dev/null 2>&1 \
+    && echo "  signe et verifie : $PUSH_REGISTRY/$app@${DIGEST[$app]}"
 done
 
 echo

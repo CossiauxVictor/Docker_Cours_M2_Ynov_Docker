@@ -59,6 +59,9 @@ services:
       - --entrypoints.web.address=:80
       - --ping=true
       - --accesslog=true
+      # TP09 zero interruption : un backend qui vient de disparaitre (IP supprimee) fait attendre la connexion
+      # jusqu'au dialTimeout (30s par defaut !). 1s puis le middleware retry passe a l'autre replica
+      - --serverstransport.forwardingtimeouts.dialtimeout=1s
     ports:
       - "80:80"
     volumes:
@@ -78,6 +81,9 @@ services:
         APP_VERSION: dev
     image: shop/shopapi:dev
     command: ["node", "src/server.js"]
+    # TP09 : SIGTERM -> l'api finit ses requetes en cours (server.close) avant le SIGKILL.
+    # 15s > le timer de 10s du code (process.exit(1) si l'arret traine)
+    stop_grace_period: 15s
     networks:
       - front
       - back
@@ -98,6 +104,11 @@ services:
       # healthcheck cote traefik : un replica qui repond plus est sorti du load balancer
       - traefik.http.services.api.loadbalancer.healthcheck.path=/health
       - traefik.http.services.api.loadbalancer.healthcheck.interval=5s
+      # TP09 : retry = si le replica choisi refuse la connexion (SIGTERM en cours) ou a disparu,
+      # traefik rejoue la requete sur un autre replica au lieu de renvoyer 502 / timeout au client
+      - traefik.http.middlewares.api-retry.retry.attempts=3
+      - traefik.http.middlewares.api-retry.retry.initialinterval=100ms
+      - traefik.http.routers.api.middlewares=api-retry@docker
 
   worker:
     <<: *app
